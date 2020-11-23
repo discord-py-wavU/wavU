@@ -14,4 +14,4 @@ async def on_ready():
     await general_channel.send('hi')
 
 
-client.run('Mzc5MTU4Nzc0MTU5NTA3NDU5.WgftIA.n-WrY7dg3ZvJzfVcE-IKldH-Hww')
+client.run(config.token)
