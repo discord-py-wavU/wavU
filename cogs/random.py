@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 
-class _random(commands.Cog):
+class Random(commands.Cog):
 
     def __init__(self, client):
         self.client = client
@@ -20,6 +20,25 @@ class _random(commands.Cog):
             await message.author.send('que te pasa gil?')
         await self.client.process_commands(message)
 
+    @commands.command()
+    async def alan(self, ctx):
+        await ctx.message.channel.send('gay')
+
+    @commands.command()
+    async def tuvieja(self, ctx):
+        await ctx.message.channel.send('entanga')
+    
+    @commands.command()
+    async def pimpumpam(self, ctx):
+        await ctx.message.channel.send('como a nisman')
+        
+    @commands.command()
+    async def pepeto(self, ctx):
+        await ctx.message.channel.send("Pepeeeto peeepeetooo peeepeetoo", tts=True)
+
 
 def setup(client):
-    client.add_cog(_random(client))
+    client.add_cog(Random(client))
+
+
+
