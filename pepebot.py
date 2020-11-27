@@ -1,27 +1,40 @@
-import discord
-from discord.utils import get
-from discord.ext import commands
-from config import token
 import os
 
-client = commands.Bot(command_prefix='=')
+import discord
+from discord.ext import commands
 
-#events
+import config
+
+client = commands.Bot(command_prefix=config.prefix)
+
 
 @client.event
 async def on_ready():
-    await client.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game('AAAAAAAAAA'))
+    await client.change_presence(status=config.status, activity=discord.Game(config.game))
 
-@client.event
-async def on_message(message):
-    if message.content == 'eh vo':
-        await message.author.send('que te pasa gil?')
-    await client.process_commands(message)
+
+@client.command()
+async def load(ctx, extension):
+    client.load_extension(f'cogs.{extension}')
+
+
+@client.command()
+async def unload(ctx, extension):
+    client.unload_extension(f'cogs.{extension}')
+
+
+@client.command()
+async def reload(ctx, extension):
+    try:
+        client.unload_extension(f'cogs.{extension}')
+    except discord.ext.commands.errors.ExtensionNotLoaded:
+        print('Extension already unloaded')
+    finally:
+        client.load_extension(f'cogs.{extension}')
+
 
 for filename in os.listdir('./cogs'):
     if filename.endswith('.py'):
         client.load_extension(f'cogs.{filename[:-3]}')
 
-
-client.run(token)
-
+client.run(config.token)
