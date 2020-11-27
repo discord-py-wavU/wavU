@@ -2,12 +2,12 @@ import discord
 from discord.ext import commands
 import asyncio
 import itertools
+import functools
 import sys
 import traceback
 from async_timeout import timeout
 from functools import partial
 from youtube_dl import YoutubeDL
-
 
 ytdlopts = {
     'format': 'bestaudio/best',
@@ -78,6 +78,74 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(source), data=data, requester=ctx.author)
 
     @classmethod
+    async def search_source(cls, ctx: commands.Context, search: str, *, loop: asyncio.BaseEventLoop = None, bot, download=False):
+        channel = ctx.channel
+        loop = loop or asyncio.get_event_loop()
+
+        search_query = '%s%s:%s' % ('ytsearch', 10, ''.join(search))
+
+        partial = functools.partial(ytdl.extract_info, search_query, download=False, process=False)
+        data = await loop.run_in_executor(None, partial)
+
+        cls.search = {}
+        cls.search["title"] = f'Search results for:\n**{search}**'
+        cls.search["type"] = 'rich'
+        cls.search["color"] = 7506394
+        cls.search["author"] = {'name': f'{ctx.author.name}', 'url': f'{ctx.author.avatar_url}', 'icon_url': f'{ctx.author.avatar_url}'}
+        
+        lst = []
+        urls = []
+        titles = []
+        i = 1
+
+        for e in data['entries']:
+            VId = e.get('id')
+            VUrl = 'https://www.youtube.com/watch?v=%s' % (VId)
+            urls.append(VUrl)
+            lst.append(f'{i}. [{e.get("title")}]({VUrl})\n')
+            titles.append(e.get("title"))
+            i += 1
+
+        
+        lst.append('\n**Type a number to make a choice, Type `cancel` to exit**')
+        cls.search["description"] = "\n".join(lst)
+
+        em = discord.Embed.from_dict(cls.search)
+        await ctx.send(embed=em, delete_after=45.0)
+
+        def check(msg):
+            print("f")
+            return msg.content.isdigit() and (msg.channel == channel or msg.content == 'cancel' or msg.content == 'Cancel')
+            
+        
+        try:
+            m = await bot.wait_for('message', check=check, timeout=45.0)
+
+        except asyncio.TimeoutError:
+            rtrn = 'timeout'
+
+        else:
+            if m.content.isdigit() == True:
+                sel = int(m.content)
+                if 0 < sel <= 10:
+
+                    if download:
+                        source = ytdl.prepare_filename(data)
+
+                        rtrn = cls(discord.FFmpegPCMAudio(source), data=data, requester=ctx.author)
+                    else:
+                        rtrn = {'webpage_url': urls[sel-1], 'requester': ctx.author, 'title': titles[sel-1]}
+
+                else:
+                    rtrn = 'sel_invalid'
+            elif m.content == 'cancel':
+                rtrn = 'cancel'
+            else:
+                rtrn = 'sel_invalid'
+        
+        return rtrn
+
+    @classmethod
     async def regather_stream(cls, data, *, loop):
         """Used for preparing a stream, instead of downloading.
         Since Youtube Streaming links expire."""
@@ -88,6 +156,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         data = await loop.run_in_executor(None, to_run)
 
         return cls(discord.FFmpegPCMAudio(data['url']), data=data, requester=requester)
+
 
 
 class MusicPlayer:
@@ -262,11 +331,50 @@ class Music(commands.Cog):
             await ctx.invoke(self.connect_)
 
         player = self.get_player(ctx)
+        async with ctx.typing():    
+            # If download is False, source will be a dict which will be used later to regather the stream.
+            # If download is True, source will be a discord.FFmpegPCMAudio with a VolumeTransformer.
+            source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
 
-        # If download is False, source will be a dict which will be used later to regather the stream.
-        # If download is True, source will be a discord.FFmpegPCMAudio with a VolumeTransformer.
-        source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
+        await player.queue.put(source)
 
+    @commands.command(name='search')
+    async def search_(self, ctx, *, search: str):
+        """Searches youtube.
+        It returns an imbed of the first 10 results collected from youtube.
+        Then the user can choose one of the titles by typing a number
+        in chat or they can cancel by typing "cancel" in chat.
+        Each title in the list can be clicked as a link.
+        """
+
+        await ctx.trigger_typing()
+
+        vc = ctx.voice_client
+
+        if not vc:
+            await ctx.invoke(self.connect_)
+
+        player = self.get_player(ctx)
+
+        async with ctx.typing():
+            try:
+                source = await YTDLSource.search_source(ctx, search, loop=self.bot.loop, bot=self.bot, download=False)
+        
+            except:
+                if source == 'sel_invalid':
+                    await ctx.send('Invalid selection')
+                elif source == 'cancel':
+                    await ctx.send(':white_check_mark:')
+                elif source == 'timeout':
+                    await ctx.send(':alarm_clock: **Time\'s up bud**')
+                else:
+                    if not ctx.voice_state.voice:
+                        await ctx.invoke(self.connect_)
+
+                    song = Song(source)
+                    await ctx.voice_state.songs.put(song)
+                    await ctx.send('Enqueued {}'.format(str(source)))
+        
         await player.queue.put(source)
 
     @commands.command(name='pause')
@@ -295,7 +403,7 @@ class Music(commands.Cog):
         vc.resume()
         await ctx.send(f'**`{ctx.author}`**: Resumed the song!')
 
-    @commands.command(name='skip')
+    @commands.command(name='skip', aliases=['s'])
     async def skip_(self, ctx):
         """Skip the song."""
         vc = ctx.voice_client
@@ -389,6 +497,16 @@ class Music(commands.Cog):
 
         await self.cleanup(ctx.guild)
 
+    @commands.command(name='shuffle', aliases=['sh'])
+    async def _shuffle(self, ctx):
+        """Shuffles the current queue."""
 
+        if len(ctx.state.songs) == 0:
+            raise MusicError('Nothing in the queue.')
+
+        ctx.state.songs.shuffle()
+        await ctx.message.add_reaction('✅')
+
+    
 def setup(bot):
     bot.add_cog(Music(bot))
