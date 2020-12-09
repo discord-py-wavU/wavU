@@ -1,3 +1,4 @@
+import random
 import time
 from datetime import datetime
 
@@ -24,10 +25,34 @@ class VoiceCommands(commands.Cog):
                     voice = await after.channel.connect()
                 print(get_current_time() + ' => ' + member.guild.name + ' :: '
                       + member.display_name + ' -> ' + after.channel.name)
+                audios_to_play = audio.song_list.audio_list + audio.song_list.ah_re_cargar_exc
+                if member.guild.name == 'MalaPraxis':
+                    audios_to_play += audio.song_list.mala_praxis_exc
                 time.sleep(0.6)
-                voice.play(discord.FFmpegPCMAudio(audio.song_list.ctm))
-                time.sleep(1.7)
-                await voice.disconnect()
+                print(self.client.voice_clients)
+                audio_to_play = random.choice(audios_to_play)
+                voice.play(discord.FFmpegPCMAudio(audio_to_play))
+                while voice.is_playing():
+                    time.sleep(0.3)
+                voice.stop()
+                if voice.is_connected():
+                    print(voice.latency)
+                    # while voice.latency == float('inf'):
+                    # print(voice.latency)
+                    # print(voice.average_latency)
+                    await voice.disconnect()
+
+                if after.channel.name == 'General' or after.channel.name == 'aaaaa':
+                    print('User is in channel')
+                    print(member.voice)
+                    #print(member.voice_clients)
+                    #await member.disconnect()
+
+                    # await member.voice.disconnect()
+                    # voice2 = get(member.voice.channel, guild=member.guild)
+                    # print(voice2)
+                    # await voice.disconnect()
+
             except discord.ClientException:
                 print("Error")
         elif after.channel is None and len(before.channel.members) == 1:
