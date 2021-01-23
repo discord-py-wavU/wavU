@@ -18,7 +18,6 @@ class Random(commands.Cog):
     async def on_message(self, message):
         if message.content == 'eh vo':
             await message.author.send('que te pasa gil?')
-        await self.client.process_commands(message)
 
     @commands.command()
     async def alan(self, ctx):
