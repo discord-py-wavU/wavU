@@ -26,8 +26,7 @@ class VoiceCommands(commands.Cog):
                     await voice.move_to(after.channel)
                 else:
                     voice = await after.channel.connect()
-                onlyfiles = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
-                audios_to_play = onlyfiles
+                audios_to_play = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
                 time.sleep(1)
                 audio_to_play = 'audio/' + member.guild.name + '/' + random.choice(audios_to_play)
                 voice.play(discord.FFmpegPCMAudio(audio_to_play))
