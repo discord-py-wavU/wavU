@@ -1,5 +1,6 @@
 import random
 import time
+import config
 from datetime import datetime
 
 import discord
@@ -17,7 +18,7 @@ class VoiceCommands(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        path = '/Users/facub/Documents/GitHub/pepebot/audio'
+        path = config.path
         if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user:
             try:
                 voice = get(self.client.voice_clients, guild=member.guild)
