@@ -44,6 +44,38 @@ class VoiceCommands(commands.Cog):
                 await voice.disconnect()
 
     @commands.command()
+    async def choose(self, ctx):
+        path = config.path + "/" + ctx.message.guild.name
+        songs = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
+        listsongs = ""
+        for index, song in enumerate(songs):
+            listsongs = listsongs + str(index+1) + ". " + song + "\n" 
+        listsongs = listsongs + "cancel"
+        await ctx.send("List .mp3 files:\n" + listsongs)
+
+        await ctx.send("Choose a number to play a .mp3 file")
+
+        def check(m):
+            return m.content.isdigit() or m.content == "cancel" or m.content == "Cancel"
+        msg = await self.client.wait_for('message', check=check, timeout= 45)
+
+        if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
+            await ctx.send(songs[int(msg.content)-1] + ' is playing')
+            channel = ctx.author.voice.channel
+            voice = await channel.connect()
+            audio_to_play = 'audio/' + ctx.message.guild.name + '/' + songs[int(msg.content)-1]
+            voice.play(discord.FFmpegPCMAudio(audio_to_play))
+            while voice.is_playing():
+                time.sleep(0.3)
+            voice.stop()
+            if voice.is_connected():
+                await voice.disconnect()
+        elif msg.content == "cancel" or msg.content == "Cancel":
+            await ctx.send("Nothing has been chosen")
+        elif int(msg.content) > len(songs) or int(msg.content) == 0:
+            await ctx.send("That number is not an option")
+
+    @commands.command()
     async def time(self, ctx):
         print(get_current_time())
 
