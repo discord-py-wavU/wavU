@@ -6,7 +6,8 @@ import discord
 from discord.ext import commands
 from discord.utils import get
 
-import audio.song_list
+from os import listdir
+from os.path import isfile, join
 
 
 class VoiceCommands(commands.Cog):
@@ -16,6 +17,7 @@ class VoiceCommands(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
+        path = '/Users/facub/Documents/GitHub/pepebot/audio'
         if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user:
             try:
                 voice = get(self.client.voice_clients, guild=member.guild)
@@ -23,14 +25,13 @@ class VoiceCommands(commands.Cog):
                     await voice.move_to(after.channel)
                 else:
                     voice = await after.channel.connect()
-                print(get_current_time() + ' => ' + member.guild.name + ' :: '
-                      + member.display_name + ' -> ' + after.channel.name)
-                audios_to_play = audio.song_list.audio_list + audio.song_list.ah_re_cargar_exc
-                if member.guild.name == 'MalaPraxis':
-                    audios_to_play += audio.song_list.mala_praxis_exc
-                time.sleep(0.6)
-                print(self.client.voice_clients)
-                audio_to_play = random.choice(audios_to_play)
+                onlyfiles = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
+                #print(get_current_time() + ' => ' + member.guild.name + ' :: '
+                #      + member.display_name + ' -> ' + after.channel.name)
+                audios_to_play = onlyfiles
+                time.sleep(1)
+                #print(self.client.voice_clients)
+                audio_to_play = 'audio/' + random.choice(audios_to_play)
                 voice.play(discord.FFmpegPCMAudio(audio_to_play))
                 while voice.is_playing():
                     time.sleep(0.3)
