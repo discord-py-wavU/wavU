@@ -58,6 +58,7 @@ class VoiceCommands(commands.Cog):
 
     @commands.command(aliases=['ch', 'c'], help='Play a chosen .mp3 file')
     async def choose(self, ctx, arg=None):
+        loop = self.client.loop or asyncio.get_event_loop()
         if arg != None:
             path = config.path + "/" + ctx.message.guild.name + '/' + str(ctx.message.mentions[0])
         else:
@@ -67,33 +68,40 @@ class VoiceCommands(commands.Cog):
         for index, song in enumerate(songs):
             listsongs = listsongs + str(index+1) + ". " + song + "\n" 
         listsongs = listsongs + "cancel"
-        await ctx.send("List .mp3 files:\n" + listsongs)
+        await ctx.send("List .mp3 files:\n" + listsongs, delete_after=30)
 
-        await ctx.send("Choose a number to play a .mp3 file")
+        await ctx.send("Choose a number to play a .mp3 file", delete_after=30)
 
         def check(m):
             return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) or m.content == "cancel" or m.content == "Cancel"
-        msg = await self.client.wait_for('message', check=check, timeout= 45)
+        try:
+            msg = await self.client.wait_for('message', check=check, timeout= 30)
 
-        if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-            await ctx.send(songs[int(msg.content)-1] + ' is playing')
-            channel = ctx.author.voice.channel
-            voice = await channel.connect()
-            if arg != None:
-                audio_to_play = 'audio/' + ctx.message.guild.name + '/' + str(ctx.message.mentions[0]) + '/' + songs[int(msg.content)-1]
-            else:
-                audio_to_play = 'audio/' + ctx.message.guild.name + '/' + songs[int(msg.content)-1]
-            voice.play(discord.FFmpegPCMAudio(audio_to_play))
-            while voice.is_playing():
-                time.sleep(0.3)
-            voice.stop()
-            if voice.is_connected():
-                await voice.disconnect()
-        elif msg.content == "cancel" or msg.content == "Cancel":
-            await ctx.send("Nothing has been chosen")
-        elif int(msg.content) > len(songs) or int(msg.content) == 0:
-            await ctx.send("That number is not an option")
+            if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
+                await ctx.send(songs[int(msg.content)-1] + ' is playing')
+                channel = ctx.author.voice.channel
+                voice = await channel.connect()
+                if arg != None:
+                    audio_to_play = 'audio/' + ctx.message.guild.name + '/' + str(ctx.message.mentions[0]) + '/' + songs[int(msg.content)-1]
+                else:
+                    audio_to_play = 'audio/' + ctx.message.guild.name + '/' + songs[int(msg.content)-1]
 
+                partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                await loop.run_in_executor(None, partial)
+
+                while voice.is_playing():
+                    await asyncio.sleep(0.3)
+                voice.stop()
+                if voice.is_connected():
+                    await voice.disconnect()
+            elif msg.content == "cancel" or msg.content == "Cancel":
+                await ctx.send("Nothing has been chosen")
+            elif int(msg.content) > len(songs) or int(msg.content) == 0:
+                await ctx.send("That number is not an option")
+        except asyncio.TimeoutError:
+            await ctx.send('Timeout!', delete_after=15)
+            await asyncio.sleep(15)
+            await ctx.message.delete()
 
     @commands.command()
     async def time(self, ctx):
