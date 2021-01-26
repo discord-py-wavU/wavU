@@ -27,8 +27,10 @@ class VoiceCommands(commands.Cog):
                     await voice.move_to(after.channel)
                 else:
                     voice = await after.channel.connect()
-                audios_to_play = [f for f in listdir(member_path) if isfile(join(member_path, f)) and '.mp3' in f]
-
+                try:
+                    audios_to_play = [f for f in listdir(member_path) if isfile(join(member_path, f)) and '.mp3' in f]
+                except:
+                    audios_to_play = []
                 if not audios_to_play:
                     audios_to_play = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
                     time.sleep(1)
