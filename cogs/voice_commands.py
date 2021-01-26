@@ -2,6 +2,8 @@ import random
 import time
 import config
 from datetime import datetime
+import asyncio
+import functools
 
 import discord
 from discord.ext import commands
@@ -18,6 +20,7 @@ class VoiceCommands(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
+        loop = self.client.loop or asyncio.get_event_loop()
         path = config.path + '/' + member.guild.name
         if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user:
             member_path = path + '/' + str(member)
@@ -33,27 +36,27 @@ class VoiceCommands(commands.Cog):
                     audios_to_play = []
                 if not audios_to_play:
                     audios_to_play = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
-                    time.sleep(1)
                     audio_to_play = 'audio/' + member.guild.name + '/' + random.choice(audios_to_play)
                 else:
-                    time.sleep(1)
                     audio_to_play = 'audio/' + member.guild.name + '/' + str(member) + '/' + random.choice(audios_to_play)
-                voice.play(discord.FFmpegPCMAudio(audio_to_play))
+
+                partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                await loop.run_in_executor(None, partial)
 
                 while voice.is_playing():
-                    time.sleep(0.3)
+                    await asyncio.sleep(0.3)
                 voice.stop()
                 if voice.is_connected():
                     await voice.disconnect()
 
-            except discord.ClientException:
-                print("Error")
+            except discord.ClientException as e:
+                print("Error: " + str(e))
         elif after.channel is None and len(before.channel.members) == 1:
             voice = get(self.client.voice_clients)
             if voice and voice.is_connected():
                 await voice.disconnect()
 
-    @commands.command()
+    @commands.command(aliases=['ch', 'c'], help='Play a chosen .mp3 file')
     async def choose(self, ctx, arg=None):
         if arg != None:
             path = config.path + "/" + ctx.message.guild.name + '/' + str(ctx.message.mentions[0])
@@ -69,7 +72,7 @@ class VoiceCommands(commands.Cog):
         await ctx.send("Choose a number to play a .mp3 file")
 
         def check(m):
-            return m.content.isdigit() or m.content == "cancel" or m.content == "Cancel"
+            return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) or m.content == "cancel" or m.content == "Cancel"
         msg = await self.client.wait_for('message', check=check, timeout= 45)
 
         if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:

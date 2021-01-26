@@ -13,10 +13,10 @@ class FileManagement(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-    @commands.command()
+    @commands.command(aliases=['a'], help='Add one .mp3 file')
     async def add(self, ctx, arg = None):
 
-        await ctx.send("Update a .mp3 file", delete_after=30)
+        await ctx.send("Upload a .mp3 file", delete_after=30)
         if arg != None:
             newpath = config.path + "/" + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
         else:
@@ -25,13 +25,13 @@ class FileManagement(commands.Cog):
             os.makedirs(newpath)
 
         def check(m):
-            return m.attachments
+            return m.attachments and m.author.guild.name == ctx.message.guild.name
         msg = await self.client.wait_for('message', check=check)
 
         headers = {
         'User-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0'
         }
-
+        
         r = requests.get(msg.attachments[0].url, headers=headers, stream=True)
         mp3 = msg.attachments[0].filename.split('.')
         if arg != None:
@@ -49,7 +49,7 @@ class FileManagement(commands.Cog):
             await ctx.send("This is not a .mp3 file")
 
 
-    @commands.command()
+    @commands.command(aliases=['dlt','d', 'del'], help='Delete one chosen .mp3 file')
     async def delete(self, ctx, arg=None):
         if arg != None:
             path = config.path + '/' + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
@@ -65,7 +65,7 @@ class FileManagement(commands.Cog):
         await ctx.send("Choose a number to delete a .mp3 file")
 
         def check(m):
-            return m.content.isdigit() or m.content == "cancel" or m.content == "Cancel"
+            return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) or m.content == "cancel" or m.content == "Cancel"
         msg = await self.client.wait_for('message', check=check, timeout= 45)
 
         if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
@@ -76,7 +76,7 @@ class FileManagement(commands.Cog):
         elif int(msg.content) > len(songs) or int(msg.content) == 0:
             await ctx.send("That number is not an option")
 
-    @commands.command(name='list', aliases=['show'])
+    @commands.command(name='list', aliases=['show'], help="Show list of .mp3 files")
     async def show_list(self, ctx, arg=None):
         if arg != None:
             path = config.path + '/' + ctx.message.guild.name + '/' + str(ctx.message.mentions[0])
