@@ -134,7 +134,7 @@ class FileManagement(commands.Cog):
             list_songs = ""
             for index, song in enumerate(songs):
                 list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
-            list_songs = list_songs + "cancel"
+            list_songs = list_songs + "Type all to delete all the .mp3 files\ncancel"
             await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
             if ctx.message.content == '=edit':
                 await ctx.send("Choose a number to edit a .mp3 file name", delete_after=30)
@@ -143,7 +143,8 @@ class FileManagement(commands.Cog):
 
             def check_delete(m):
                 return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) \
-                       or m.content == "cancel" or m.content == "Cancel"
+                       or m.content == "cancel" or m.content == "Cancel" or m.content == "all" \
+                       or m.content == "All"
 
             def check_edit(m):
                 return m.author.guild.name == ctx.message.guild.name \
@@ -180,10 +181,17 @@ class FileManagement(commands.Cog):
                         await ctx.send("Nothing has been deleted")
                     await asyncio.sleep(15)
                     await msg.delete()
+                elif msg.content == "all" or msg.content == "All":
+                    for i in range(len(songs)):
+                        os.remove(path + '/' + songs[i])
+                    await ctx.send('All the .mp3 files has been deleted')
+                    await asyncio.sleep(15)
+                    await msg.delete()
                 elif int(msg.content) > len(songs) or int(msg.content) == 0:
                     await ctx.send("That number is not an option")
                     await asyncio.sleep(15)
                     await msg.delete()
+
             except asyncio.TimeoutError:
                 await ctx.send('Timeout!', delete_after=15)
                 await asyncio.sleep(15)
