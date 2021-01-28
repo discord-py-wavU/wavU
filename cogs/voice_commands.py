@@ -81,10 +81,9 @@ class VoiceCommands(commands.Cog):
         if songs:
             list_songs = ""
             for index, song in enumerate(songs):
-                list_songs = list_songs + str(index+1) + ". " + song + "\n"
+                list_songs = list_songs + str(index+1) + ". " + song.split(".mp3")[0] + "\n"
             list_songs = list_songs + "cancel"
             await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
-
             await ctx.send("Choose a number to play a .mp3 file", delete_after=30)
 
             def check(m):
