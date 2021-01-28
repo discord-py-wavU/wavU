@@ -44,8 +44,8 @@ class VoiceCommands(commands.Cog):
                 if not voice.is_playing():
                     partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
                     await loop.run_in_executor(None, partial)
-
-                else: 
+                    await asyncio.sleep(2)
+                else:
                     while voice.is_playing():
                         await asyncio.sleep(0.5)  
                     partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
@@ -72,7 +72,11 @@ class VoiceCommands(commands.Cog):
             path = config.path + "/" + ctx.message.guild.name + '/' + str(ctx.message.mentions[0])
         else:
             path = config.path + "/" + ctx.message.guild.name
-        songs = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
+        try:
+            songs = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
+        except Exception as e:
+            print(str(e))
+            songs = []
 
         if songs:
             list_songs = ""
@@ -99,6 +103,7 @@ class VoiceCommands(commands.Cog):
                     else:
                         audio_to_play = 'audio/' + ctx.message.guild.name + '/' + songs[int(msg.content)-1]
 
+
                     if not voice.is_playing():
                         partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
                         await loop.run_in_executor(None, partial)
@@ -115,11 +120,14 @@ class VoiceCommands(commands.Cog):
 
                     if voice.is_connected() and not voice.is_playing():
                         await voice.disconnect()
+                        await msg.delete()
 
                 elif msg.content == "cancel" or msg.content == "Cancel":
                     await ctx.send("Nothing has been chosen")
+                    await msg.delete()
                 elif int(msg.content) > len(songs) or int(msg.content) == 0:
                     await ctx.send("That number is not an option")
+                    await msg.delete()
             except asyncio.TimeoutError:
                 await ctx.send('Timeout!', delete_after=15)
                 await asyncio.sleep(15)
