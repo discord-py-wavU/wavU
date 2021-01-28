@@ -21,7 +21,7 @@ class FileManagement(commands.Cog):
     @commands.command(aliases=['a', 'unzip'], help='Add one .mp3 file')
     async def add(self, ctx, arg=None):
 
-        if ctx.message.content == '=unzip':
+        if str(ctx.message.content).split(' ')[0] == '=unzip':
             await ctx.send("Upload a .zip file", delete_after=30)
         else:
             await ctx.send("Upload a .mp3 file", delete_after=30)
