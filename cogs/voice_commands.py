@@ -7,6 +7,7 @@ import functools
 import discord
 from discord.ext import commands
 from discord.utils import get
+from cogs import db
 
 from os import listdir
 from os.path import isfile, join
@@ -22,6 +23,13 @@ class VoiceCommands(commands.Cog):
         loop = self.client.loop or asyncio.get_event_loop()
         path = config.path + '/' + member.guild.name
         if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user:
+
+            servers = db.all_servers(True)
+
+            for server in servers:
+                if str(member.guild.name) == server[1] and server[2] == 0:
+                    return
+
             member_path = path + '/' + str(member)
             try:
                 voice = get(self.client.voice_clients, guild=member.guild)
