@@ -55,7 +55,7 @@ class FileManagement(commands.Cog):
 
             r = requests.get(msg.attachments[0].url, headers=headers, stream=True)
 
-            if str(ctx.message.content).split(' ')[0] == '=unzip':
+            if str(ctx.message.content).split(' ')[0] == config.prefix + 'unzip':
                 with open('audio/' + filename + '.zip', 'wb') as f:
                     for chunk in r.iter_content():
                         if chunk:
@@ -229,14 +229,25 @@ class FileManagement(commands.Cog):
             filename = ctx.message.guild.name
 
         zip = zipfile.ZipFile('audio/' + filename + '.zip', 'w', zipfile.ZIP_DEFLATED)
+        isEmpty = False
 
         for root, dirs, files in os.walk(path):
-            for file in files:
-                zip.write(os.path.join(root, file),
-                          os.path.relpath(os.path.join(root, file), os.path.join(path, '..\\' + filename)))
+            if not files:
+                isEmpty = True
+                break
+            else:
+                for file in files:
+                    song = file.split('.')
+                    if song[len(song) - 1] == "mp3" and root == path:
+                        zip.write(os.path.join(root, file),
+                                  os.path.relpath(os.path.join(root + '/' + filename, file), os.path.join(path, filename)))
+        
         zip.close()
 
-        await ctx.send(file=discord.File(fp='audio/' + filename + '.zip', filename=filename + '.zip'))
+        if not isEmpty:
+            await ctx.send(file=discord.File(fp='audio/' + filename + '.zip', filename=filename + '.zip'))
+        else:
+            await ctx.send("There's no song in the zip file")
 
         os.remove(config.path + '/' + filename + '.zip')
 
