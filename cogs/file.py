@@ -232,7 +232,7 @@ class FileManagement(commands.Cog):
         isEmpty = False
 
         for root, dirs, files in os.walk(path):
-            if not files:
+            if not files and root == path:
                 isEmpty = True
                 break
             else:
@@ -241,15 +241,16 @@ class FileManagement(commands.Cog):
                     if song[len(song) - 1] == "mp3" and root == path:
                         zip.write(os.path.join(root, file),
                                   os.path.relpath(os.path.join(root + '/' + filename, file), os.path.join(path, filename)))
-        
+
         zip.close()
 
         if not isEmpty:
             await ctx.send(file=discord.File(fp='audio/' + filename + '.zip', filename=filename + '.zip'))
+            os.remove(config.path + '/' + filename + '.zip')
         else:
             await ctx.send("There's no song in the zip file")
 
-        os.remove(config.path + '/' + filename + '.zip')
+
 
 
 def setup(client):
