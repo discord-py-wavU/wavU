@@ -143,6 +143,7 @@ class VoiceCommands(commands.Cog):
             await ctx.send("List is empty")
 
     @commands.command()
+    @commands.has_role('PepeMaster')
     async def time(self):
         print(get_current_time())
 

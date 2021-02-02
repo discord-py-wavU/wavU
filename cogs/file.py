@@ -5,6 +5,8 @@ import os
 import requests
 import config
 import asyncio
+import functools
+
 
 from shutil import move
 
@@ -19,6 +21,7 @@ class FileManagement(commands.Cog):
         self.client = client
 
     @commands.command(aliases=['a', 'unzip'], help='Add one .mp3 file')
+    @commands.has_role('PepeMaster')
     async def add(self, ctx, arg=None):
 
         if str(ctx.message.content).split(' ')[0] == '=unzip':
@@ -117,6 +120,7 @@ class FileManagement(commands.Cog):
             await ctx.message.delete()
 
     @commands.command(aliases=['dlt', 'd', 'del', 'edit'], help='Delete one chosen .mp3 file')
+    @commands.has_role('PepeMaster')
     async def delete(self, ctx, arg=None):
 
         if arg is not None:
@@ -219,7 +223,9 @@ class FileManagement(commands.Cog):
         else:
             await ctx.send('List is empty')
 
+
     @commands.command()
+    @commands.has_role('PepeMaster')
     async def zip(self, ctx, arg=None):
         if arg is not None:
             path = config.path + "/" + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
@@ -240,7 +246,8 @@ class FileManagement(commands.Cog):
                     song = file.split('.')
                     if song[len(song) - 1] == "mp3" and root == path:
                         zip.write(os.path.join(root, file),
-                                  os.path.relpath(os.path.join(root + '/' + filename, file), os.path.join(path, filename)))
+                                  os.path.relpath(os.path.join(root + '/' + filename, file),
+                                                  os.path.join(path, filename)))
 
         zip.close()
 
@@ -249,8 +256,6 @@ class FileManagement(commands.Cog):
             os.remove(config.path + '/' + filename + '.zip')
         else:
             await ctx.send("There's no song in the zip file")
-
-
 
 
 def setup(client):
