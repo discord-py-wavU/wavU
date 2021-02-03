@@ -7,7 +7,6 @@ import config
 import asyncio
 import functools
 
-
 from shutil import move
 
 from os import listdir
@@ -20,11 +19,45 @@ class FileManagement(commands.Cog):
     def __init__(self, client):
         self.client = client
 
+    @staticmethod
+    def unzip(filename, path, r):
+
+        with open('audio/' + filename + '.zip', 'wb') as f:
+            for chunk in r.iter_content():
+                if chunk:
+                    f.write(chunk)
+        f.close()
+
+        isValid = True
+
+        with zipfile.ZipFile('audio/' + filename + '.zip', 'r') as zip_ref:
+            songs = zip_ref.namelist()
+
+            for song in songs:
+                mp3 = song.split('.')
+                if mp3[len(mp3) - 1] != "mp3":
+                    print(song)
+                    isValid = False
+
+            if isValid:
+                zip_ref.extractall(path)
+                zip_ref.close()
+
+        return isValid
+
+    @staticmethod
+    def add_song(path, r):
+        with open(path, 'wb') as f:
+            for chunk in r.iter_content():
+                if chunk:
+                    f.write(chunk)
+        f.close()
+
     @commands.command(aliases=['a', 'unzip'], help='Add one .mp3 file')
     @commands.has_role('PepeMaster')
     async def add(self, ctx, arg=None):
-
-        if str(ctx.message.content).split(' ')[0] == '=unzip':
+        loop = self.client.loop or asyncio.get_event_loop()
+        if str(ctx.message.content).split(' ')[0] == config.prefix + 'unzip':
             await ctx.send("Upload a .zip file", delete_after=30)
         else:
             await ctx.send("Upload a .mp3 file", delete_after=30)
@@ -59,25 +92,10 @@ class FileManagement(commands.Cog):
             r = requests.get(msg.attachments[0].url, headers=headers, stream=True)
 
             if str(ctx.message.content).split(' ')[0] == config.prefix + 'unzip':
-                with open('audio/' + filename + '.zip', 'wb') as f:
-                    for chunk in r.iter_content():
-                        if chunk:
-                            f.write(chunk)
-                f.close()
 
-                isValid = True
-
-                with zipfile.ZipFile('audio/' + filename + '.zip', 'r') as zip_ref:
-                    songs = zip_ref.namelist()
-
-                    for song in songs:
-                        mp3 = song.split('.')
-                        if mp3[len(mp3) - 1] != "mp3":
-                            isValid = False
-
-                    if isValid:
-                        zip_ref.extractall(path)
-                        zip_ref.close()
+                async with ctx.typing():
+                    fn = functools.partial(self.unzip, filename, path, r)
+                    isValid = await loop.run_in_executor(None, fn)
 
                 if isValid:
                     for root, dirs, files in os.walk(path):
@@ -99,11 +117,9 @@ class FileManagement(commands.Cog):
             else:
                 mp3 = msg.attachments[0].filename.split('.')
                 if mp3[len(mp3) - 1] == "mp3":
-                    with open(path, 'wb') as f:
-                        for chunk in r.iter_content():
-                            if chunk:
-                                f.write(chunk)
-                    f.close()
+                    async with ctx.typing():
+                        fn = functools.partial(self.add_song, path, r)
+                        await loop.run_in_executor(None, fn)
                     if arg is not None:
                         await ctx.send(msg.attachments[0].filename + " has been added to "
                                        + ctx.message.guild.name + '/' + str(ctx.message.mentions[0]))
@@ -223,17 +239,8 @@ class FileManagement(commands.Cog):
         else:
             await ctx.send('List is empty')
 
-
-    @commands.command()
-    @commands.has_role('PepeMaster')
-    async def zip(self, ctx, arg=None):
-        if arg is not None:
-            path = config.path + "/" + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
-            filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
-        else:
-            path = config.path + "/" + ctx.message.guild.name
-            filename = ctx.message.guild.name
-
+    @staticmethod
+    def zipping(filename, path):
         zip = zipfile.ZipFile('audio/' + filename + '.zip', 'w', zipfile.ZIP_DEFLATED)
         isEmpty = False
 
@@ -250,6 +257,23 @@ class FileManagement(commands.Cog):
                                                   os.path.join(path, filename)))
 
         zip.close()
+
+        return isEmpty
+
+    @commands.command()
+    @commands.has_role('PepeMaster')
+    async def zip(self, ctx, arg=None):
+        loop = self.client.loop or asyncio.get_event_loop()
+        if arg is not None:
+            path = config.path + "/" + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+            filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+        else:
+            path = config.path + "/" + ctx.message.guild.name
+            filename = ctx.message.guild.name
+
+        async with ctx.typing():
+            fn = functools.partial(self.zipping, filename, path)
+            isEmpty = await loop.run_in_executor(None, fn)
 
         if not isEmpty:
             await ctx.send(file=discord.File(fp='audio/' + filename + '.zip', filename=filename + '.zip'))
