@@ -24,7 +24,7 @@ class VoiceCommands(commands.Cog):
         path = config.path + '/' + member.guild.name
         if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user:
 
-            servers = db.all_servers(True)
+            servers = db.all_servers(False)
 
             for server in servers:
                 if str(member.guild.name) == server[1] and server[2] == 0:
