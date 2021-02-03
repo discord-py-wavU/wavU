@@ -154,9 +154,12 @@ class FileManagement(commands.Cog):
             list_songs = ""
             for index, song in enumerate(songs):
                 list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
-            list_songs = list_songs + "Type all to delete all the .mp3 files\ncancel"
+            if ctx.message.content == config.prefix + 'edit':
+                list_songs = list_songs + "cancel"
+            else:
+                list_songs = list_songs + "Type all to delete all the .mp3 files\ncancel"
             await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
-            if ctx.message.content == '=edit':
+            if ctx.message.content == config.prefix + 'edit':
                 await ctx.send("Choose a number to edit a .mp3 file name", delete_after=30)
             else:
                 await ctx.send("Choose a number to delete a .mp3 file", delete_after=30)
@@ -171,35 +174,48 @@ class FileManagement(commands.Cog):
                        or m.content == "cancel" or m.content == "Cancel"
 
             try:
-                msg = await self.client.wait_for('message', check=check_delete, timeout=30)
-                if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-                    if ctx.message.content == '=edit':
-                        await ctx.send("Choose a new name or type Cancel to not edit", delete_after=60)
-                        msg_edit = await self.client.wait_for('message', check=check_edit, timeout=60)
-                        if msg_edit == 'cancel' or msg_edit == 'Cancel':
+                for i in range(3):
+                    msg = await self.client.wait_for('message', check=check_delete, timeout=30)
+                    if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
+                        if ctx.message.content == config.prefix + 'edit':
+                            await ctx.send("Choose a new name or type Cancel to not edit", delete_after=60)
+                            msg_edit = await self.client.wait_for('message', check=check_edit, timeout=60)
+                            if msg_edit.content == 'cancel' or msg_edit.content == 'Cancel':
+                                await ctx.send("Nothing has been edited")
+                                await asyncio.sleep(10)
+                                await msg.delete()
+                            else:
+                                os.rename(path + '/' + songs[int(msg.content) - 1],
+                                          path + '/' + msg_edit.content + '.mp3')
+                                await ctx.send(songs[int(msg.content) - 1] +
+                                               ' has been edited to ' + msg_edit.content + '.mp3')
+                            break
+                            await msg_edit.delete()
+                        else:
+                            os.remove(path + '/' + songs[int(msg.content) - 1])
+                            await ctx.send(songs[int(msg.content) - 1] + ' has been deleted')
+                        break
+                    elif msg.content == "cancel" or msg.content == "Cancel":
+                        if ctx.message.content == config.prefix + 'edit':
                             await ctx.send("Nothing has been edited")
                         else:
-                            os.rename(path + '/' + songs[int(msg.content) - 1],
-                                      path + '/' + msg_edit.content + '.mp3')
-                            await ctx.send(songs[int(msg.content) - 1] +
-                                           ' has been edited to ' + msg_edit.content + '.mp3')
-                        await msg_edit.delete()
-                    else:
-                        os.remove(path + '/' + songs[int(msg.content) - 1])
-                        await ctx.send(songs[int(msg.content) - 1] + ' has been deleted')
-                elif msg.content == "cancel" or msg.content == "Cancel":
-                    if ctx.message.content == '=edit':
-                        await ctx.send("Nothing has been edited")
-                    else:
-                        await ctx.send("Nothing has been deleted")
-                elif msg.content == "all" or msg.content == "All":
-                    for i in range(len(songs)):
-                        os.remove(path + '/' + songs[i])
-                    await ctx.send('All the .mp3 files has been deleted')
-                elif int(msg.content) > len(songs) or int(msg.content) == 0:
-                    await ctx.send("That number is not an option")
-                await asyncio.sleep(15)
-                await msg.delete()
+                            await ctx.send("Nothing has been deleted")
+                        await msg.delete()
+                        break
+                    elif msg.content == "all" or msg.content == "All":
+                        for i in range(len(songs)):
+                            os.remove(path + '/' + songs[i])
+                        await ctx.send('All the .mp3 files has been deleted')
+                        await msg.delete()
+                        break
+                    elif int(msg.content) > len(songs) or int(msg.content) == 0:
+                        await ctx.send("That number is not an option. Try again ("+str(i+1)+"/3)", delete_after=10)
+                        if i == 2:
+                            if ctx.message.content == config.prefix + 'edit':
+                                await ctx.send("None of the attempts were correct, edit has been aborted")
+                            else:
+                                await ctx.send("None of the attempts were correct, delete has been aborted")
+                    await msg.delete()
 
             except asyncio.TimeoutError:
                 await ctx.send('Timeout!', delete_after=15)

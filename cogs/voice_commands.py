@@ -46,6 +46,7 @@ class VoiceCommands(commands.Cog):
         audio_to_play = []
         voice = get(self.client.voice_clients, guild=member.guild)
 
+
         if is_on:
             try:
                 member_path = path + '/' + str(member)
@@ -61,7 +62,6 @@ class VoiceCommands(commands.Cog):
                     print(str(e))
                     audios_to_play = []
                 if audios_to_play:
-                    print("hi")
                     is_Empty = False
                     voice = await self.connect(voice, after)
                     audio_to_play = 'audio/' + member.guild.name + '/' + random.choice(audios_to_play)
@@ -139,42 +139,45 @@ class VoiceCommands(commands.Cog):
                 return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) \
                        or m.content == "cancel" or m.content == "Cancel"
             try:
-                msg = await self.client.wait_for('message', check=check, timeout=30)
+                for i in range(3):
+                    msg = await self.client.wait_for('message', check=check, timeout=30)
+                    if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
+                        await ctx.send(songs[int(msg.content)-1] + ' is playing')
+                        channel = ctx.author.voice.channel
+                        voice = await channel.connect()
+                        if arg is not None:
+                            audio_to_play = 'audio/' + ctx.message.guild.name + '/' \
+                                            + str(ctx.message.mentions[0]) + '/' + songs[int(msg.content)-1]
+                        else:
+                            audio_to_play = 'audio/' + ctx.message.guild.name + '/' + songs[int(msg.content)-1]
 
-                if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-                    await ctx.send(songs[int(msg.content)-1] + ' is playing')
-                    channel = ctx.author.voice.channel
-                    voice = await channel.connect()
-                    if arg is not None:
-                        audio_to_play = 'audio/' + ctx.message.guild.name + '/' \
-                                        + str(ctx.message.mentions[0]) + '/' + songs[int(msg.content)-1]
-                    else:
-                        audio_to_play = 'audio/' + ctx.message.guild.name + '/' + songs[int(msg.content)-1]
+                        if not voice.is_playing():
+                            partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                            await loop.run_in_executor(None, partial)
 
-                    if not voice.is_playing():
-                        partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
-                        await loop.run_in_executor(None, partial)
-
-                    else:
-                        while voice.is_playing():
+                        else:
+                            while voice.is_playing():
+                                await asyncio.sleep(0.5)
+                            partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                            await loop.run_in_executor(None, partial)
                             await asyncio.sleep(0.5)
-                        partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
-                        await loop.run_in_executor(None, partial)
-                        await asyncio.sleep(0.5)
 
-                    while voice.is_playing():
-                        await asyncio.sleep(1)
+                        while voice.is_playing():
+                            await asyncio.sleep(1)
 
-                    if voice.is_connected() and not voice.is_playing():
-                        await voice.disconnect()
+                        if voice.is_connected() and not voice.is_playing():
+                            await voice.disconnect()
+                            await msg.delete()
+                        break
+                    elif msg.content == "cancel" or msg.content == "Cancel":
+                        await ctx.send("Nothing has been chosen")
                         await msg.delete()
-
-                elif msg.content == "cancel" or msg.content == "Cancel":
-                    await ctx.send("Nothing has been chosen")
-                    await msg.delete()
-                elif int(msg.content) > len(songs) or int(msg.content) == 0:
-                    await ctx.send("That number is not an option")
-                    await msg.delete()
+                        break
+                    elif int(msg.content) > len(songs) or int(msg.content) == 0:
+                        await ctx.send("That number is not an option. Try again ("+str(i+1)+"/3)", delete_after=10)
+                        await msg.delete()
+                        if i == 2:
+                            await ctx.send("None of the attempts were correct, choose has been aborted")
             except asyncio.TimeoutError:
                 await ctx.send('Timeout!', delete_after=15)
                 await asyncio.sleep(15)
