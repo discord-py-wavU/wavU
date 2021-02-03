@@ -178,39 +178,28 @@ class FileManagement(commands.Cog):
                         msg_edit = await self.client.wait_for('message', check=check_edit, timeout=60)
                         if msg_edit == 'cancel' or msg_edit == 'Cancel':
                             await ctx.send("Nothing has been edited")
-                            await asyncio.sleep(15)
-                            await msg.delete()
-                            await msg_edit.delete()
                         else:
                             os.rename(path + '/' + songs[int(msg.content) - 1],
                                       path + '/' + msg_edit.content + '.mp3')
                             await ctx.send(songs[int(msg.content) - 1] +
                                            ' has been edited to ' + msg_edit.content + '.mp3')
-                            await asyncio.sleep(15)
-                            await msg.delete()
-                            await msg_edit.delete()
+                        await msg_edit.delete()
                     else:
                         os.remove(path + '/' + songs[int(msg.content) - 1])
                         await ctx.send(songs[int(msg.content) - 1] + ' has been deleted')
-                        await asyncio.sleep(15)
-                        await msg.delete()
                 elif msg.content == "cancel" or msg.content == "Cancel":
                     if ctx.message.content == '=edit':
                         await ctx.send("Nothing has been edited")
                     else:
                         await ctx.send("Nothing has been deleted")
-                    await asyncio.sleep(15)
-                    await msg.delete()
                 elif msg.content == "all" or msg.content == "All":
                     for i in range(len(songs)):
                         os.remove(path + '/' + songs[i])
                     await ctx.send('All the .mp3 files has been deleted')
-                    await asyncio.sleep(15)
-                    await msg.delete()
                 elif int(msg.content) > len(songs) or int(msg.content) == 0:
                     await ctx.send("That number is not an option")
-                    await asyncio.sleep(15)
-                    await msg.delete()
+                await asyncio.sleep(15)
+                await msg.delete()
 
             except asyncio.TimeoutError:
                 await ctx.send('Timeout!', delete_after=15)
