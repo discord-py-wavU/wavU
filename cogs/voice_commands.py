@@ -140,7 +140,7 @@ class VoiceCommands(commands.Cog):
                 for i in range(3):
                     msg = await self.client.wait_for('message', check=check, timeout=30)
                     if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-                        await ctx.send("_**" + songs[int(msg.content)-1] + '**_ is playing')
+                        await ctx.send("**" + songs[int(msg.content)-1] + '** is playing')
                         channel = ctx.author.voice.channel
                         voice = await channel.connect()
                         if arg is not None:
@@ -172,7 +172,7 @@ class VoiceCommands(commands.Cog):
                         await msg.delete()
                         break
                     elif int(msg.content) > len(songs) or int(msg.content) == 0:
-                        await ctx.send("That number is not an option. Try again _**("+str(i+1)+"/3)**_", delete_after=10)
+                        await ctx.send("That number is not an option. Try again **("+str(i+1)+"/3)**", delete_after=10)
                         await msg.delete()
                         if i == 2:
                             await ctx.send("None of the attempts were correct, _**choose**_ has been aborted")
