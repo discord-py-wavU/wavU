@@ -1,6 +1,6 @@
 import sqlite3
-import discord
 from discord.ext import commands
+import config
 
 def create_table():
     # Connect to database
@@ -74,17 +74,28 @@ def server_delete(servername):
     conn.commit()
     conn.close()
 
+
 class Status(commands.Cog):
 
     @commands.command(help="It will make the bot reproduces the .mp3 files")
     async def on(self, ctx):
-        edit_server(1, str(ctx.message.guild.name))
-        await ctx.send("Pepebot is online now")
+        if "FM" not in (roles.name for roles in ctx.message.author.roles):
+            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
+                           + "administrator permissions are able to assign _**FM**_ role."
+                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
+        else:
+            edit_server(1, str(ctx.message.guild.name))
+            await ctx.send("_**wavU**_ is online now")
 
     @commands.command(help="It will make the bot doesn't reproduce the .mp3 files")
     async def off(self, ctx):
-        edit_server(0, str(ctx.message.guild.name))
-        await ctx.send("Pepebot is offline now")
+        if "FM" not in (roles.name for roles in ctx.message.author.roles):
+            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
+                           + "administrator permissions are able to assign _**FM**_ role."
+                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
+        else:
+            edit_server(0, str(ctx.message.guild.name))
+            await ctx.send("_**wavU**_ is offline now")
 
     @commands.command()
     async def status(self, ctx):
@@ -92,13 +103,9 @@ class Status(commands.Cog):
         for server in servers:
             if server[1] == ctx.message.guild.name:
                 if server[2]:
-                    await ctx.send("Pepebot is online")
+                    await ctx.send("_**wavU**_ is online")
                 else:
-                    await ctx.send("Pepebot is offline")
-
-#    @commands.command()
-#    async def serv(self, ctx):
-#        await ctx.send(all_servers(True))
+                    await ctx.send("_**wavU**_ is offline")
 
 
 def setup(client):
