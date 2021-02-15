@@ -1,6 +1,5 @@
 import random
 import config
-from datetime import datetime
 import asyncio
 import functools
 
@@ -41,11 +40,10 @@ class VoiceCommands(commands.Cog):
     @staticmethod
     async def search_song(self, path, member, after):
 
-        is_Empty = True
+        is_empty = True
         is_on = self.check_db(member)
         audio_to_play = []
         voice = get(self.client.voice_clients, guild=member.guild)
-
 
         if is_on:
             try:
@@ -62,16 +60,16 @@ class VoiceCommands(commands.Cog):
                     print(str(e))
                     audios_to_play = []
                 if audios_to_play:
-                    is_Empty = False
+                    is_empty = False
                     voice = await self.connect(voice, after)
                     audio_to_play = 'audio/' + member.guild.name + '/' + random.choice(audios_to_play)
             elif audios_to_play:
-                is_Empty = False
+                is_empty = False
                 voice = await self.connect(voice, after)
                 audio_to_play = 'audio/' + member.guild.name + '/' \
                                 + str(member) + '/' + random.choice(audios_to_play)
 
-        return audio_to_play, voice, is_Empty
+        return audio_to_play, voice, is_empty
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -79,9 +77,9 @@ class VoiceCommands(commands.Cog):
         path = config.path + '/' + member.guild.name
         if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user:
 
-            audio_to_play, voice, is_Empty = await self.search_song(self, path, member, after)
+            audio_to_play, voice, is_empty = await self.search_song(self, path, member, after)
 
-            if not is_Empty:
+            if not is_empty:
                 try:
                     if not voice.is_playing():
                         partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
@@ -133,7 +131,7 @@ class VoiceCommands(commands.Cog):
                 list_songs = list_songs + str(index+1) + ". " + song.split(".mp3")[0] + "\n"
             list_songs = list_songs + "cancel"
             await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
-            await ctx.send("Choose a number to play a .mp3 file", delete_after=30)
+            await ctx.send("Choose a number to play a _**.mp3**_ file", delete_after=30)
 
             def check(m):
                 return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) \
@@ -142,7 +140,7 @@ class VoiceCommands(commands.Cog):
                 for i in range(3):
                     msg = await self.client.wait_for('message', check=check, timeout=30)
                     if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-                        await ctx.send(songs[int(msg.content)-1] + ' is playing')
+                        await ctx.send("_**" + songs[int(msg.content)-1] + '**_ is playing')
                         channel = ctx.author.voice.channel
                         voice = await channel.connect()
                         if arg is not None:
@@ -170,31 +168,20 @@ class VoiceCommands(commands.Cog):
                             await msg.delete()
                         break
                     elif msg.content == "cancel" or msg.content == "Cancel":
-                        await ctx.send("Nothing has been chosen")
+                        await ctx.send("Nothing has been _*+chosen**_")
                         await msg.delete()
                         break
                     elif int(msg.content) > len(songs) or int(msg.content) == 0:
-                        await ctx.send("That number is not an option. Try again ("+str(i+1)+"/3)", delete_after=10)
+                        await ctx.send("That number is not an option. Try again _**("+str(i+1)+"/3)**_", delete_after=10)
                         await msg.delete()
                         if i == 2:
-                            await ctx.send("None of the attempts were correct, choose has been aborted")
+                            await ctx.send("None of the attempts were correct, _**choose**_ has been aborted")
             except asyncio.TimeoutError:
                 await ctx.send('Timeout!', delete_after=15)
                 await asyncio.sleep(15)
                 await ctx.message.delete()
         else:
-            await ctx.send("List is empty")
-
-    @commands.command()
-    @commands.has_role('PepeMaster')
-    async def time(self):
-        print(get_current_time())
-
-
-def get_current_time():
-    now = datetime.now()
-    current_time = now.strftime("%H:%M:%S")
-    return current_time
+            await ctx.send("_List is empty_")
 
 
 def setup(client):
