@@ -25,7 +25,7 @@ async def on_guild_join(guild):
             await channel.send(
                 "Thanks for adding me to your server!\nHere is my website to know more about my commands\n"
                 + "{URL}\nAnd here is my personal discord server if you want to be part of this community\n"
-                + "{discord server link})
+                + "{discord server link}")
 
             await guild.create_role(name='FM', reason="necessary to control bot's commands", mentionable=False)
 
