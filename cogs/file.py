@@ -53,7 +53,7 @@ class FileManagement(commands.Cog):
                     f.write(chunk)
         f.close()
 
-    @commands.command(aliases=['a', 'unzip'], help='Add one .mp3 file')
+    @commands.command(aliases=['a', 'Add', 'unzip'], help='Add one .mp3 file')
     async def add(self, ctx, arg=None):
 
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
@@ -122,7 +122,7 @@ class FileManagement(commands.Cog):
                     os.rmdir(path)
                     os.remove('audio/' + filename + '.zip')
 
-                    await ctx.send('_**' + msg.attachments[0].filename + '**_ was added to _**' + filename + '**_')
+                    await ctx.send('**' + msg.attachments[0].filename + '** was added to _**' + filename + '**_')
                     await asyncio.sleep(30)
                     await msg.delete()
                 else:
@@ -231,7 +231,7 @@ class FileManagement(commands.Cog):
                         await msg.delete()
                         break
                     elif int(msg.content) > len(songs) or int(msg.content) == 0:
-                        await ctx.send("That number is not an option. _**Try again (" + str(i + 1) + "/3)**_",
+                        await ctx.send("That number is not an option. Try again **(" + str(i + 1) + "/3)**",
                                        delete_after=10)
                         if i == 2:
                             if ctx.message.content == config.prefix + 'edit':
