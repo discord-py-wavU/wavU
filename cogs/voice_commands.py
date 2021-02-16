@@ -183,6 +183,15 @@ class VoiceCommands(commands.Cog):
         else:
             await ctx.send("_List is empty_")
 
+    @commands.command(aliases=['shutup', 'su', 'disconnect', 'disc'])
+    async def stop(self, ctx):
+        if ctx.voice_client is not None and ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+            await ctx.voice_client.disconnect()
+            await ctx.send("**wavU** was stopped and disconnected")
+        else:
+            await ctx.send("**wavU** is not connected")
+
 
 def setup(client):
     client.add_cog(VoiceCommands(client))

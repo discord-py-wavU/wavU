@@ -85,7 +85,7 @@ class Status(commands.Cog):
                            + "\nCommand: \"**" + config.prefix + "role @mention**\"")
         else:
             edit_server(1, str(ctx.message.guild.name))
-            await ctx.send("_**wavU**_ is online now")
+            await ctx.send("**wavU** is online now")
 
     @commands.command(help="It will make the bot doesn't reproduce the .mp3 files")
     async def off(self, ctx):
@@ -95,7 +95,12 @@ class Status(commands.Cog):
                            + "\nCommand: \"**" + config.prefix + "role @mention**\"")
         else:
             edit_server(0, str(ctx.message.guild.name))
-            await ctx.send("_**wavU**_ is offline now")
+            if ctx.voice_client is not None and ctx.voice_client.is_playing():
+                ctx.voice_client.stop()
+                await ctx.voice_client.disconnect()
+                await ctx.send("**wavU** was stopped and disconnected, and is offline now")
+            else:
+                await ctx.send("**wavU** is offline now")
 
     @commands.command()
     async def status(self, ctx):
@@ -103,9 +108,9 @@ class Status(commands.Cog):
         for server in servers:
             if server[1] == ctx.message.guild.name:
                 if server[2]:
-                    await ctx.send("_**wavU**_ is online")
+                    await ctx.send("**wavU** is online")
                 else:
-                    await ctx.send("_**wavU**_ is offline")
+                    await ctx.send("**wavU** is offline")
 
 
 def setup(client):
