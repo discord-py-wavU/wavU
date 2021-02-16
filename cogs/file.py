@@ -122,7 +122,7 @@ class FileManagement(commands.Cog):
                     os.rmdir(path)
                     os.remove('audio/' + filename + '.zip')
 
-                    await ctx.send('**' + msg.attachments[0].filename + '** was added to _**' + filename + '**_')
+                    await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**')
                     await asyncio.sleep(30)
                     await msg.delete()
                 else:
