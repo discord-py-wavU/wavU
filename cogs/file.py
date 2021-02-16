@@ -177,9 +177,9 @@ class FileManagement(commands.Cog):
             for index, song in enumerate(songs):
                 list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
             if ctx.message.content == config.prefix + 'edit':
-                list_songs = list_songs + "_**cancel**_"
+                list_songs = list_songs + "**cancel**"
             else:
-                list_songs = list_songs + "_**all**_\n_**cancel**_"
+                list_songs = list_songs + "**all**\n**cancel**"
             await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
             if ctx.message.content == config.prefix + 'edit':
                 await ctx.send("Choose a _number_ to edit a _**.mp3**_ file _name_", delete_after=30)
@@ -215,7 +215,7 @@ class FileManagement(commands.Cog):
                             break
                         else:
                             os.remove(path + '/' + songs[int(msg.content) - 1])
-                            await ctx.send('_**' + songs[int(msg.content) - 1] + '**_ has been _**deleted**_')
+                            await ctx.send('**' + songs[int(msg.content) - 1] + '** has been _**deleted**_')
                         break
                     elif msg.content == "cancel" or msg.content == "Cancel":
                         if ctx.message.content == config.prefix + 'edit':
