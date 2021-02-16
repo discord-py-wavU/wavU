@@ -138,11 +138,11 @@ class FileManagement(commands.Cog):
                         fn = functools.partial(self.add_song, path, r)
                         await loop.run_in_executor(None, fn)
                     if arg is not None:
-                        await ctx.send('_**' + msg.attachments[0].filename + "**_ has been added to _**"
-                                       + ctx.message.guild.name + '/' + str(ctx.message.mentions[0]) + '**_')
+                        await ctx.send('**' + msg.attachments[0].filename + "** has been added to **"
+                                       + ctx.message.guild.name + '/' + str(ctx.message.mentions[0]) + '**')
                     else:
-                        await ctx.send('_**' + msg.attachments[0].filename +
-                                       "**_ has been added to _**" + ctx.message.guild.name + '**_')
+                        await ctx.send('**' + msg.attachments[0].filename +
+                                       "** has been added to **" + ctx.message.guild.name + '**')
                 else:
                     await ctx.send("This is not a _**.mp3**_ file", delete_after=15)
                 await asyncio.sleep(15)
