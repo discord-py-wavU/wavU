@@ -153,7 +153,7 @@ class FileManagement(commands.Cog):
             await asyncio.sleep(15)
             await ctx.message.delete()
 
-    @commands.command(aliases=['dlt', 'd', 'del', 'edit'], help='Delete one chosen .mp3 file')
+    @commands.command(aliases=['dlt', 'd', 'del', 'edit', 'remove', 'rm'], help='Delete one chosen .mp3 file')
     async def delete(self, ctx, arg=None):
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
             await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "

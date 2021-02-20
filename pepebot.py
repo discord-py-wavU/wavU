@@ -6,19 +6,20 @@ import discord.utils
 import asyncio
 
 import config
+import content
 
-client = commands.Bot(command_prefix=config.prefix)
+client = commands.Bot(command_prefix=config.prefix, help_command=None)
 
 
 @client.event
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))
+    print("Bot is ready")
     await daily_task()
 
 
 @client.event
 async def on_guild_join(guild):
-
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).administrator:
             channel = await guild.create_text_channel('wavU')
@@ -49,6 +50,7 @@ async def role(ctx, arg=None):
     else:
         await ctx.send("You need to have administrator permissions to assign FM role")
 
+
 @client.command()
 async def unrole(ctx, arg=None):
     role = discord.utils.get(ctx.guild.roles, name="FM")
@@ -64,6 +66,26 @@ async def unrole(ctx, arg=None):
                 await ctx.send("This person hasn't FM role")
     else:
         await ctx.send("You need to have administrator permissions to remove FM role")
+
+
+@client.command()
+async def help(ctx):
+    embed = discord.Embed(title=content.title, description=content.description, color=content.side_color)
+    embed.set_thumbnail(url=content.img_link)
+    embed.add_field(name=content.field_title_add, value=content.field_description_add, inline=False)
+    embed.add_field(name=content.field_title_unzip, value=content.field_description_unzip, inline=False)
+    embed.add_field(name=content.field_title_zip, value=content.field_description_zip, inline=False)
+    embed.add_field(name=content.field_title_delete, value=content.field_description_delete, inline=False)
+    embed.add_field(name=content.field_title_edit, value=content.field_description_edit, inline=False)
+    embed.add_field(name=content.field_title_list, value=content.field_description_list, inline=False)
+    embed.add_field(name=content.field_title_on, value=content.field_description_on, inline=True)
+    embed.add_field(name=content.field_title_off, value=content.field_description_off, inline=True)
+    embed.add_field(name=content.field_title_status, value=content.field_description_status, inline=False)
+    embed.add_field(name=content.field_title_role, value=content.field_description_role, inline=False)
+    embed.add_field(name=content.field_title_unrole, value=content.field_description_unrole, inline=False)
+    embed.add_field(name=content.field_title_invite, value=content.field_description_invite, inline=False)
+    embed.add_field(name=content.field_title_join, value=content.field_description_join, inline=False)
+    await ctx.send(embed=embed)
 
 
 @client.event
@@ -86,7 +108,7 @@ async def daily_task():
         if is_in:
             db.add_server(str(guild.name))
 
-    await asyncio.sleep(24*60*60)
+    await asyncio.sleep(24 * 60 * 60)
     await daily_task()
 
 
