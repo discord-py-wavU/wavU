@@ -143,7 +143,7 @@ class FileManagement(commands.Cog):
 
         return is_valid
 
-    @commands.command(alieses=['Unzip'])
+    @commands.command(aliases=['Unzip'])
     async def unzip(self, ctx, arg=None):
 
         has_role = self.required_role(ctx)
@@ -353,6 +353,70 @@ class FileManagement(commands.Cog):
                 await ctx.message.delete()
         else:
             await ctx.send('_List is empty_')
+
+    @staticmethod
+    def dl_file(ctx, arg):
+        if arg is not None:
+            file_path = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
+        else:
+            file_path = 'audio/' + str(ctx.message.guild.id)
+
+        return file_path
+
+    @commands.command(aliases=['Download', 'dl', 'Dl', 'DL'])
+    async def download(self, ctx, arg=None):
+
+        has_role = self.required_role(ctx)
+        if not has_role:
+            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
+                           + "administrator permissions are able to assign _**FM**_ role."
+                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
+            return
+
+        path = self.get_path(ctx, arg)
+
+        songs = self.get_list_songs(path)
+
+        if songs:
+
+            list_songs = ""
+            for index, song in enumerate(songs):
+                list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
+            list_songs = list_songs + "**cancel**"
+            await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
+            await ctx.send("Choose a _number_ to download a _**.mp3**_ file", delete_after=30)
+
+            def check(m):
+                return m.author.guild.name == ctx.message.guild.name \
+                       or m.content == "cancel" or m.content == "Cancel"
+
+            try:
+                for i in range(3):
+
+                    msg = await self.client.wait_for('message', check=check, timeout=30)
+                    file_path = self.dl_file(ctx, arg)
+
+                    if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
+                        await ctx.send(file=discord.File(fp=file_path + '/' + songs[int(msg.content) - 1],
+                                                         filename=songs[int(msg.content) - 1]))
+
+                        await ctx.send('**' + songs[int(msg.content) - 1] + '** has been _**downloaded**_')
+                        break
+
+                    elif msg.content == "cancel" or msg.content == "Cancel":
+                        await ctx.send("Nothing has been _**downloaded**_")
+                        await msg.delete()
+                        break
+                    elif int(msg.content) > len(songs) or int(msg.content) == 0:
+                        await ctx.send("That number is not an option. Try again **(" + str(i + 1) + "/3)**",
+                                       delete_after=10)
+                        if i == 2:
+                            await ctx.send("None of the attempts were correct, _**download**_ has been aborted")
+                    await msg.delete()
+            except asyncio.TimeoutError:
+                await ctx.send('Timeout!', delete_after=15)
+                await asyncio.sleep(15)
+                await ctx.message.delete()
 
     @commands.command(name='list', aliases=['show', 'List', 'Show'])
     async def show_list(self, ctx, arg=None):

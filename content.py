@@ -1,14 +1,15 @@
 import config
 
-img_link = "https://cdn.discordapp.com/attachments/721702337319665724/812507322873413672/prof_photo.png"
+img_link = "https://cdn.discordapp.com/attachments/721702337319665724/813869073388666921/WavU_b.png"
 invite_link = "https://discord.com/oauth2/authorize?client_id=379158774159507459&scope=bot&permissions=268435496"
-server_link = "https://discord.gg/hQF22MhC8P"
+server_link = "https://discord.gg/qq6nQtGsyJ"
 pre = config.prefix
 bot_name = "wavU"
 side_color = 0xFC65E1
-emoji = ":wave:"
+emoji = "<:WavU:813997355975835669>"
 
-title = f"{emoji} Hello! I'm {bot_name}!"
+title = f"{emoji} Hello everyone! My name is {bot_name} " \
+        f"\nand i'm here to help you!"
 description = "This is **all** the commands you can use\n\n" \
               "**Commands**"
 
@@ -19,6 +20,10 @@ field_description_add = f"__add__ adds a mp3 file to main files.\n" \
 field_title_choose = f"`{pre}choose` `{pre}ch` `{pre}c`"
 field_description_choose = f"__choose__ chooses a mp3 file to play from main files.\n" \
                            f"*Optional:* `@mention` chooses a mp3 to play from a specific person.\n"
+
+field_title_download = f"`{pre}download` `{pre}dl`"
+field_description_download = f"__download__ downloads a mp3 file from main files.\n" \
+                             f"*Optional:* `@mention` downloads a mp3 file from a specific person."
 
 field_title_unzip = f"`{pre}unzip` "
 field_description_unzip = f"__unzip__ unzips all the mp3 files in it to main files.\n" \

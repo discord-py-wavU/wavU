@@ -51,7 +51,7 @@ async def role(ctx, arg=None):
         await ctx.send("You need to have administrator permissions to assign FM role")
 
 
-@client.command(alieses=['Unrole'])
+@client.command(aliases=['Unrole'])
 async def unrole(ctx, arg=None):
     roles = discord.utils.get(ctx.guild.roles, name="FM")
 
@@ -68,12 +68,13 @@ async def unrole(ctx, arg=None):
         await ctx.send("You need to have administrator permissions to remove FM role")
 
 
-@client.command(alieses=['Help'])
+@client.command(aliases=['Help'])
 async def help(ctx):
     embed = discord.Embed(title=content.title, description=content.description, color=content.side_color)
     embed.set_thumbnail(url=content.img_link)
     embed.add_field(name=content.field_title_add, value=content.field_description_add, inline=False)
     embed.add_field(name=content.field_title_choose, value=content.field_description_choose, inline=False)
+    embed.add_field(name=content.field_title_download, value=content.field_description_download, inline=False)
     embed.add_field(name=content.field_title_unzip, value=content.field_description_unzip, inline=False)
     embed.add_field(name=content.field_title_zip, value=content.field_description_zip, inline=False)
     embed.add_field(name=content.field_title_delete, value=content.field_description_delete, inline=False)
