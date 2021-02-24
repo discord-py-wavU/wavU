@@ -42,11 +42,11 @@ class FileManagement(commands.Cog):
             path = ('audio/' + str(ctx.message.guild.id) + '/' +
                     str(ctx.message.mentions[0].id) + '/' + msg.attachments[0].filename)
             mov = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
-            filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+            filename = str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
         else:
             path = 'audio/' + str(ctx.message.guild.id) + '/' + msg.attachments[0].filename
             mov = 'audio/' + str(ctx.message.guild.id)
-            filename = ctx.message.guild.name
+            filename = str(ctx.message.guild.id)
 
         return path, mov, filename
 
@@ -407,7 +407,7 @@ class FileManagement(commands.Cog):
         else:
             path = config.path + "/" + str(ctx.message.guild.id)
             filename = ctx.message.guild.name
-            file_path = ctx.message.guild.id
+            file_path = str(ctx.message.guild.id)
 
         async with ctx.typing():
             fn = functools.partial(self.zipping, file_path, path)
