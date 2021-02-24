@@ -30,22 +30,22 @@ class FileManagement(commands.Cog):
     @staticmethod
     def create_folder(ctx, arg):
         if arg is not None:
-            new_path = config.path + "/" + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+            new_path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
         else:
-            new_path = config.path + "/" + ctx.message.guild.name
+            new_path = config.path + "/" + str(ctx.message.guild.id)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
 
     @staticmethod
     def set_path(ctx, arg, msg):
         if arg is not None:
-            path = ('audio/' + ctx.message.guild.name + '/' +
-                    str(ctx.message.mentions[0]) + '/' + msg.attachments[0].filename)
-            mov = 'audio/' + ctx.message.guild.name + '/' + str(ctx.message.mentions[0])
+            path = ('audio/' + str(ctx.message.guild.id) + '/' +
+                    str(ctx.message.mentions[0].id) + '/' + msg.attachments[0].filename)
+            mov = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
             filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
         else:
-            path = 'audio/' + ctx.message.guild.name + '/' + msg.attachments[0].filename
-            mov = 'audio/' + ctx.message.guild.name
+            path = 'audio/' + str(ctx.message.guild.id) + '/' + msg.attachments[0].filename
+            mov = 'audio/' + str(ctx.message.guild.id)
             filename = ctx.message.guild.name
 
         return path, mov, filename
@@ -133,7 +133,6 @@ class FileManagement(commands.Cog):
             for song in songs:
                 mp3 = song.split('.')
                 if mp3[len(mp3) - 1] != "mp3":
-                    print(song)
                     is_valid = False
 
             if is_valid:
@@ -207,9 +206,9 @@ class FileManagement(commands.Cog):
     @staticmethod
     def get_path(ctx, arg):
         if arg is not None:
-            path = config.path + '/' + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+            path = config.path + '/' + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
         else:
-            path = config.path + "/" + ctx.message.guild.name
+            path = config.path + "/" + str(ctx.message.guild.id)
 
         return path
 
@@ -355,15 +354,10 @@ class FileManagement(commands.Cog):
 
     @commands.command(name='list', aliases=['show', 'List', 'Show'])
     async def show_list(self, ctx, arg=None):
-        if arg is not None:
-            path = config.path + '/' + ctx.message.guild.name + '/' + str(ctx.message.mentions[0])
-        else:
-            path = config.path + "/" + ctx.message.guild.name
-        try:
-            songs = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
-        except Exception as e:
-            print(str(e))
-            songs = []
+
+        path = self.get_path(ctx, arg)
+
+        songs = self.get_list_songs(path)
 
         if songs:
             list_songs = ""
@@ -374,8 +368,8 @@ class FileManagement(commands.Cog):
             await ctx.send('_List is empty_')
 
     @staticmethod
-    def zipping(filename, path):
-        file_zip = zipfile.ZipFile('audio/' + filename + '.zip', 'w', zipfile.ZIP_DEFLATED)
+    def zipping(file_path, path):
+        file_zip = zipfile.ZipFile('audio/' + file_path + '.zip', 'w', zipfile.ZIP_DEFLATED)
         is_empty = False
 
         for root, dirs, files in os.walk(path):
@@ -387,8 +381,8 @@ class FileManagement(commands.Cog):
                     song = file.split('.')
                     if song[len(song) - 1] == "mp3" and root == path:
                         file_zip.write(os.path.join(root, file),
-                                       os.path.relpath(os.path.join(root + '/' + filename, file),
-                                                       os.path.join(path, filename)))
+                                       os.path.relpath(os.path.join(root + '/' + file_path, file),
+                                                       os.path.join(path, file_path)))
 
         file_zip.close()
 
@@ -396,7 +390,10 @@ class FileManagement(commands.Cog):
 
     @commands.command(aliases=['Zip', 'z', 'Z'])
     async def zip(self, ctx, arg=None):
-        if "FM" not in (roles.name for roles in ctx.message.author.roles):
+
+        has_role = self.required_role(ctx)
+
+        if not has_role:
             await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
                            + "administrator permissions are able to assign _**FM**_ role."
                            + "\nCommand: \"**" + config.prefix + "role @mention**\"")
@@ -404,19 +401,21 @@ class FileManagement(commands.Cog):
 
         loop = self.client.loop or asyncio.get_event_loop()
         if arg is not None:
-            path = config.path + "/" + ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+            path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
             filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+            file_path = str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
         else:
-            path = config.path + "/" + ctx.message.guild.name
+            path = config.path + "/" + str(ctx.message.guild.id)
             filename = ctx.message.guild.name
+            file_path = ctx.message.guild.id
 
         async with ctx.typing():
-            fn = functools.partial(self.zipping, filename, path)
+            fn = functools.partial(self.zipping, file_path, path)
             is_empty = await loop.run_in_executor(None, fn)
 
         if not is_empty:
-            await ctx.send(file=discord.File(fp='audio/' + filename + '.zip', filename=filename + '.zip'))
-            os.remove(config.path + '/' + filename + '.zip')
+            await ctx.send(file=discord.File(fp='audio/' + file_path + '.zip', filename=filename + '.zip'))
+            os.remove(config.path + '/' + file_path + '.zip')
         else:
             await ctx.send("There's no file to add to _**zip**_")
 

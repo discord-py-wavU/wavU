@@ -47,7 +47,7 @@ class VoiceCommands(commands.Cog):
 
         if is_on:
             try:
-                member_path = path + '/' + str(member)
+                member_path = path + '/' + str(member.id)
                 audios_to_play = [f for f in listdir(member_path) if isfile(join(member_path, f)) and '.mp3' in f]
             except Exception as e:
                 print(str(e))
@@ -62,20 +62,21 @@ class VoiceCommands(commands.Cog):
                 if audios_to_play:
                     is_empty = False
                     voice = await self.connect(voice, after)
-                    audio_to_play = 'audio/' + member.guild.name + '/' + random.choice(audios_to_play)
+                    audio_to_play = 'audio/' + str(member.guild.id) + '/' + random.choice(audios_to_play)
             elif audios_to_play:
                 is_empty = False
                 voice = await self.connect(voice, after)
-                audio_to_play = 'audio/' + member.guild.name + '/' \
-                                + str(member) + '/' + random.choice(audios_to_play)
+                audio_to_play = 'audio/' + str(member.guild.id) + '/' \
+                                + str(member.id) + '/' + random.choice(audios_to_play)
 
         return audio_to_play, voice, is_empty
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         loop = self.client.loop or asyncio.get_event_loop()
-        path = config.path + '/' + member.guild.name
-        if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user:
+        path = config.path + '/' + str(member.guild.id)
+        if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user and \
+                not member.bot:
 
             audio_to_play, voice, is_empty = await self.search_song(self, path, member, after)
 
@@ -108,9 +109,9 @@ class VoiceCommands(commands.Cog):
     @staticmethod
     async def search_songs(ctx, arg):
         if arg is not None:
-            path = config.path + "/" + ctx.message.guild.name + '/' + str(ctx.message.mentions[0])
+            path = config.path + "/" + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
         else:
-            path = config.path + "/" + ctx.message.guild.name
+            path = config.path + "/" + str(ctx.message.guild.id)
         try:
             songs = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
         except Exception as e:
@@ -144,10 +145,10 @@ class VoiceCommands(commands.Cog):
                         channel = ctx.author.voice.channel
                         voice = await channel.connect()
                         if arg is not None:
-                            audio_to_play = 'audio/' + ctx.message.guild.name + '/' \
-                                            + str(ctx.message.mentions[0]) + '/' + songs[int(msg.content)-1]
+                            audio_to_play = 'audio/' + str(ctx.message.guild.id) + '/' \
+                                            + str(ctx.message.mentions[0].id) + '/' + songs[int(msg.content)-1]
                         else:
-                            audio_to_play = 'audio/' + ctx.message.guild.name + '/' + songs[int(msg.content)-1]
+                            audio_to_play = 'audio/' + str(ctx.message.guild.id) + '/' + songs[int(msg.content)-1]
 
                         if not voice.is_playing():
                             partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
