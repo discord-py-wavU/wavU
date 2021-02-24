@@ -2,6 +2,7 @@ import sqlite3
 from discord.ext import commands
 import config
 
+
 def create_table():
     # Connect to database
     conn = sqlite3.connect('database.db')
@@ -77,7 +78,7 @@ def server_delete(servername):
 
 class Status(commands.Cog):
 
-    @commands.command(help="It will make the bot reproduces the .mp3 files")
+    @commands.command(alieses=['On'])
     async def on(self, ctx):
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
             await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
@@ -87,7 +88,7 @@ class Status(commands.Cog):
             edit_server(1, str(ctx.message.guild.name))
             await ctx.send("**wavU** is online now")
 
-    @commands.command(help="It will make the bot doesn't reproduce the .mp3 files")
+    @commands.command(alieses=['Off'])
     async def off(self, ctx):
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
             await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
