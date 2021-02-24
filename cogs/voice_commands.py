@@ -119,7 +119,7 @@ class VoiceCommands(commands.Cog):
 
         return songs
 
-    @commands.command(aliases=['ch', 'c'], help='Play a chosen .mp3 file')
+    @commands.command(aliases=['Choose', 'ch', 'c', 'Ch', 'C'])
     async def choose(self, ctx, arg=None):
         loop = self.client.loop or asyncio.get_event_loop()
 
@@ -131,7 +131,7 @@ class VoiceCommands(commands.Cog):
                 list_songs = list_songs + str(index+1) + ". " + song.split(".mp3")[0] + "\n"
             list_songs = list_songs + "cancel"
             await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
-            await ctx.send("Choose a number to play a _**.mp3**_ file", delete_after=30)
+            await ctx.send("Choose a number to play a _**.mp3**_ file or _**cancel**_", delete_after=30)
 
             def check(m):
                 return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) \
@@ -140,7 +140,7 @@ class VoiceCommands(commands.Cog):
                 for i in range(3):
                     msg = await self.client.wait_for('message', check=check, timeout=30)
                     if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-                        await ctx.send("**" + songs[int(msg.content)-1] + '** is playing')
+                        await ctx.send("**" + songs[int(msg.content)-1] + '** was chosen')
                         channel = ctx.author.voice.channel
                         voice = await channel.connect()
                         if arg is not None:
@@ -168,7 +168,7 @@ class VoiceCommands(commands.Cog):
                             await msg.delete()
                         break
                     elif msg.content == "cancel" or msg.content == "Cancel":
-                        await ctx.send("Nothing has been _*+chosen**_")
+                        await ctx.send("Nothing has been _**chosen**_")
                         await msg.delete()
                         break
                     elif int(msg.content) > len(songs) or int(msg.content) == 0:
@@ -183,7 +183,7 @@ class VoiceCommands(commands.Cog):
         else:
             await ctx.send("_List is empty_")
 
-    @commands.command(aliases=['shutup', 'su', 'disconnect', 'disc'])
+    @commands.command(aliases=['shutup', 'disconnect', 'disc', 'Shutup', 'Stop', 'Disconnect', 'Disc'])
     async def stop(self, ctx):
         if ctx.voice_client is not None and ctx.voice_client.is_playing():
             ctx.voice_client.stop()

@@ -28,15 +28,15 @@ async def on_guild_join(guild):
                 + "{URL}\nAnd here is my personal discord server if you want to be part of this community\n"
                 + "{discord server link}")
 
-            await guild.create_role(name='FM', reason="necessary to control bot's commands", mentionable=False)
+            await guild.create_role(name='FM', reason="necessary to control bot's commands", mentionable=True)
 
             db.add_server(str(guild.name))
         break
 
 
-@client.command()
+@client.command(aliases=['Role'])
 async def role(ctx, arg=None):
-    role = discord.utils.get(ctx.guild.roles, name="FM")
+    roles = discord.utils.get(ctx.guild.roles, name="FM")
 
     if ctx.message.author.guild_permissions.administrator:
         if arg is None or not ctx.message.mentions:
@@ -45,22 +45,22 @@ async def role(ctx, arg=None):
             if "FM" in (roles.name for roles in ctx.message.mentions[0].roles):
                 await ctx.send("This person already has FM role")
             else:
-                await ctx.message.mentions[0].add_roles(role)
+                await ctx.message.mentions[0].add_roles(roles)
                 await ctx.send("_**" + str(ctx.message.mentions[0]) + "**_ has _File Manager_ role")
     else:
         await ctx.send("You need to have administrator permissions to assign FM role")
 
 
-@client.command()
+@client.command(alieses=['Unrole'])
 async def unrole(ctx, arg=None):
-    role = discord.utils.get(ctx.guild.roles, name="FM")
+    roles = discord.utils.get(ctx.guild.roles, name="FM")
 
     if ctx.message.author.guild_permissions.administrator:
         if arg is None or not ctx.message.mentions:
             await ctx.send("You need to mention who you want to remove _**FM**_ role")
         else:
             if "FM" in (roles.name for roles in ctx.message.mentions[0].roles):
-                await ctx.message.mentions[0].remove_roles(role)
+                await ctx.message.mentions[0].remove_roles(roles)
                 await ctx.send("_**" + str(ctx.message.mentions[0]) + "**_ has been removed from _File Manager_ role")
             else:
                 await ctx.send("This person hasn't FM role")
@@ -68,18 +68,20 @@ async def unrole(ctx, arg=None):
         await ctx.send("You need to have administrator permissions to remove FM role")
 
 
-@client.command()
+@client.command(alieses=['Help'])
 async def help(ctx):
     embed = discord.Embed(title=content.title, description=content.description, color=content.side_color)
     embed.set_thumbnail(url=content.img_link)
     embed.add_field(name=content.field_title_add, value=content.field_description_add, inline=False)
+    embed.add_field(name=content.field_title_choose, value=content.field_description_choose, inline=False)
     embed.add_field(name=content.field_title_unzip, value=content.field_description_unzip, inline=False)
     embed.add_field(name=content.field_title_zip, value=content.field_description_zip, inline=False)
     embed.add_field(name=content.field_title_delete, value=content.field_description_delete, inline=False)
     embed.add_field(name=content.field_title_edit, value=content.field_description_edit, inline=False)
     embed.add_field(name=content.field_title_list, value=content.field_description_list, inline=False)
-    embed.add_field(name=content.field_title_on, value=content.field_description_on, inline=True)
-    embed.add_field(name=content.field_title_off, value=content.field_description_off, inline=True)
+    embed.add_field(name=content.field_title_stop, value=content.field_description_stop, inline=False)
+    embed.add_field(name=content.field_title_on, value=content.field_description_on, inline=False)
+    embed.add_field(name=content.field_title_off, value=content.field_description_off, inline=False)
     embed.add_field(name=content.field_title_status, value=content.field_description_status, inline=False)
     embed.add_field(name=content.field_title_role, value=content.field_description_role, inline=False)
     embed.add_field(name=content.field_title_unrole, value=content.field_description_unrole, inline=False)
