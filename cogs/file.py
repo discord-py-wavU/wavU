@@ -42,13 +42,15 @@ class FileManagement(commands.Cog):
             path = ('audio/' + str(ctx.message.guild.id) + '/' +
                     str(ctx.message.mentions[0].id) + '/' + msg.attachments[0].filename)
             mov = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
-            filename = str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
+            file_path = str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
+            filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
         else:
             path = 'audio/' + str(ctx.message.guild.id) + '/' + msg.attachments[0].filename
             mov = 'audio/' + str(ctx.message.guild.id)
-            filename = str(ctx.message.guild.id)
+            file_path = str(ctx.message.guild.id)
+            filename = ctx.message.guild.name
 
-        return path, mov, filename
+        return path, mov, filename, file_path
 
     @staticmethod
     def required_role(ctx):
@@ -91,7 +93,7 @@ class FileManagement(commands.Cog):
                 'User-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0'
             }
 
-            path, mov, filename = self.set_path(ctx, arg, msg)
+            path, mov, filename, file_path = self.set_path(ctx, arg, msg)
 
             request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=True)
 
@@ -117,9 +119,9 @@ class FileManagement(commands.Cog):
             await ctx.message.delete()
 
     @staticmethod
-    def unzip_songs(filename, path, r):
+    def unzip_songs(file_path, path, r):
 
-        with open('audio/' + filename + '.zip', 'wb') as f:
+        with open('audio/' + file_path + '.zip', 'wb') as f:
             for chunk in r.iter_content():
                 if chunk:
                     f.write(chunk)
@@ -127,7 +129,7 @@ class FileManagement(commands.Cog):
 
         is_valid = True
 
-        with zipfile.ZipFile('audio/' + filename + '.zip', 'r') as zip_ref:
+        with zipfile.ZipFile('audio/' + file_path + '.zip', 'r') as zip_ref:
             songs = zip_ref.namelist()
 
             for song in songs:
@@ -173,12 +175,12 @@ class FileManagement(commands.Cog):
                 'User-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0'
             }
 
-            path, mov, filename = self.set_path(ctx, arg, msg)
+            path, mov, filename, file_path = self.set_path(ctx, arg, msg)
 
             r = requests.get(msg.attachments[0].url, headers=headers, stream=True)
 
             async with ctx.typing():
-                fn = functools.partial(self.unzip_songs, filename, path, r)
+                fn = functools.partial(self.unzip_songs, file_path, path, r)
                 is_valid = await loop.run_in_executor(None, fn)
 
             if is_valid:
@@ -187,13 +189,13 @@ class FileManagement(commands.Cog):
                         move(root + '/' + file, mov + '/' + file)
 
                 os.rmdir(path)
-                os.remove('audio/' + filename + '.zip')
+                os.remove('audio/' + file_path + '.zip')
 
                 await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**')
                 await asyncio.sleep(30)
                 await msg.delete()
             else:
-                os.remove('audio/' + filename + '.zip')
+                os.remove('audio/' + file_path + '.zip')
                 await ctx.send(msg.attachments[0].filename + ' was not a valid _**.zip**_ file')
                 await asyncio.sleep(30)
                 await msg.delete()
