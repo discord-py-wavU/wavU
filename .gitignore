@@ -2,3 +2,5 @@ config.py
 .idea
 __pycache__
 venv
+audio
+database.db
