@@ -95,7 +95,7 @@ class FileManagement(commands.Cog):
 
             path, mov, filename, file_path = self.set_path(ctx, arg, msg)
 
-            request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=True)
+            request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=False)
 
             mp3 = msg.attachments[0].filename.split('.')
             if mp3[len(mp3) - 1] == "mp3":
@@ -177,7 +177,7 @@ class FileManagement(commands.Cog):
 
             path, mov, filename, file_path = self.set_path(ctx, arg, msg)
 
-            r = requests.get(msg.attachments[0].url, headers=headers, stream=True)
+            r = requests.get(msg.attachments[0].url, headers=headers, stream=False)
 
             async with ctx.typing():
                 fn = functools.partial(self.unzip_songs, file_path, path, r)
