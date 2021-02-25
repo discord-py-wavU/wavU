@@ -24,9 +24,9 @@ async def on_guild_join(guild):
         if channel.permissions_for(guild.me).administrator:
             channel = await guild.create_text_channel('wavU')
             await channel.send(
-                "Thanks for adding me to your server!\nHere is my website to know more about my commands\n"
-                + "{URL}\nAnd here is my personal discord server if you want to be part of this community\n"
-                + "{discord server link}")
+                "Thanks for adding me to your server!\n"
+                "Here is my personal discord server if you want to be part of this community\n"
+                + content.server_link)
 
             await guild.create_role(name='FM', reason="necessary to control bot's commands", mentionable=True)
 
