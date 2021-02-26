@@ -24,11 +24,11 @@ class VoiceCommands(commands.Cog):
         chan = True
         per = True
         for server in servers:
-            if str(member.guild.id) == server[1] and server[2] == 0:
+            if member.guild.id == server[1] and server[2] == 0:
                 serv = False
-            if str(member.guild.id) == server[1] and server[3] == 0:
+            if member.guild.id == server[1] and server[3] == 0:
                 chan = False
-            if str(member.guild.id) == server[1] and server[4] == 0:
+            if member.guild.id == server[1] and server[4] == 0:
                 per = False
 
         return serv, chan, per
