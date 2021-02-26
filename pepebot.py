@@ -1,20 +1,23 @@
-import os
-import discord
-from cogs import db
-from discord.ext import commands
-import discord.utils
 import asyncio
+import logging
+import os
+
+import discord
+import discord.utils
+from discord.ext import commands
 
 import config
 import content
+from cogs import db
 
 client = commands.Bot(command_prefix=config.prefix, help_command=None)
+logging.basicConfig(level=logging.INFO)
 
 
 @client.event
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))
-    print("Bot is ready")
+    logging.info("Bot is ready")
     await daily_task()
 
 
@@ -30,7 +33,7 @@ async def on_guild_join(guild):
 
             await guild.create_role(name='FM', reason="necessary to control bot's commands", mentionable=True)
 
-            db.add_server(str(guild.name))
+            db.add_server(str(guild.id))
         break
 
 
@@ -68,6 +71,19 @@ async def unrole(ctx, arg=None):
         await ctx.send("You need to have administrator permissions to remove FM role")
 
 
+@client.command(aliases=['serv', 'ser'])
+async def servers(ctx, arg=None):
+    guilds = client.guilds
+
+    if arg == "names":
+        guilds = [guild.name for guild in guilds]
+        await ctx.send(guilds)
+    elif arg is None:
+        await ctx.send("Amount of servers wavU is in: " + str(len(guilds)))
+    else:
+        await ctx.send("No valid argument")
+
+
 @client.command(aliases=['Help'])
 async def help(ctx):
     embed = discord.Embed(title=content.title, description=content.description, color=content.side_color)
@@ -93,23 +109,23 @@ async def help(ctx):
 
 @client.event
 async def on_guild_remove(guild):
-    db.server_delete(str(guild.name))
+    db.server_delete(str(guild.id))
 
 
 async def daily_task():
-    servers = db.all_servers(False)
+    servers_ = db.all_servers(False)
     guilds = client.guilds
     for guild in guilds:
         is_in = True
         repeated = 0
-        for server in servers:
-            if guild.name == server[1]:
+        for server in servers_:
+            if guild.id == server[1]:
                 repeated += 1
                 is_in = False
         if repeated == 2:
-            db.server_delete(str(guild.name))
+            db.server_delete(str(guild.id))
         if is_in:
-            db.add_server(str(guild.name))
+            db.add_server(str(guild.id))
 
     await asyncio.sleep(24 * 60 * 60)
     await daily_task()

@@ -12,8 +12,10 @@ def create_table():
 
     # Create Client Table
     c.execute('''CREATE TABLE servers (
-                 server_name text,
-                 state int
+                 server_id int,
+                 serv_state int,
+                 chan_state int,
+                 per_state int
              )''')
 
     # Commit command
@@ -23,24 +25,46 @@ def create_table():
     conn.close()
 
 
-def add_server(server_name):
-
+def add_server(server_id):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute("INSERT INTO servers VALUES (?,1)", (server_name,))
+    c.execute("INSERT INTO servers VALUES (?,1,0,1)", (server_id,))
 
     conn.commit()
     conn.close()
 
 
-def edit_server(state, server_name):
-
+def edit_server(state, server_id):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('''UPDATE servers 
-                SET state=?
-                WHERE server_name=?
-            ''', (state, server_name))
+                 SET serv_state=?
+                 WHERE server_id=?
+            ''', (state, server_id))
+
+    conn.commit()
+    conn.close()
+
+
+def edit_channel(state, server_id):
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('''UPDATE servers 
+                 SET chan_state=?
+                 WHERE server_id=?
+            ''', (state, server_id))
+
+    conn.commit()
+    conn.close()
+
+
+def edit_personal(state, server_id):
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('''UPDATE servers 
+                 SET per_state=?
+                 WHERE server_id=?
+              ''', (state, server_id))
 
     conn.commit()
     conn.close()
@@ -65,12 +89,11 @@ def all_servers(show):
     return items
 
 
-def server_delete(servername):
-
+def server_delete(server_id):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('''DELETE FROM servers WHERE server_name=? 
-            ''', (servername, ))
+              ''', (server_id,))
 
     conn.commit()
     conn.close()
@@ -79,39 +102,66 @@ def server_delete(servername):
 class Status(commands.Cog):
 
     @commands.command(alieses=['On'])
-    async def on(self, ctx):
+    async def on(self, ctx, arg=None):
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
             await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
                            + "administrator permissions are able to assign _**FM**_ role."
                            + "\nCommand: \"**" + config.prefix + "role @mention**\"")
         else:
-            edit_server(1, str(ctx.message.guild.name))
-            await ctx.send("**wavU** is online now")
+            if arg == "common":
+                edit_server(1, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is online for common :white_check_mark:")
+            elif arg == "channel":
+                edit_channel(1, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is online for channels :white_check_mark:")
+            elif arg == "personal":
+                edit_personal(1, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is online for personal :white_check_mark:")
+            elif arg is None:
+                await ctx.send('Argument is needed, *options:* **common**, **channel** or **personal**')
+            else:
+                await ctx.send('Argument invalid, *options:* **common**, **channel** or **personal**')
 
     @commands.command(alieses=['Off'])
-    async def off(self, ctx):
+    async def off(self, ctx, arg=None):
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
             await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
                            + "administrator permissions are able to assign _**FM**_ role."
                            + "\nCommand: \"**" + config.prefix + "role @mention**\"")
         else:
-            edit_server(0, str(ctx.message.guild.name))
-            if ctx.voice_client is not None and ctx.voice_client.is_playing():
-                ctx.voice_client.stop()
-                await ctx.voice_client.disconnect()
-                await ctx.send("**wavU** was stopped and disconnected, and is offline now")
+
+            if arg == "common":
+                edit_server(0, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is offline for common :x:")
+            elif arg == "channel":
+                edit_channel(0, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is offline for channels :x:")
+            elif arg == "personal":
+                edit_personal(0, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is offline for personal :x:")
             else:
-                await ctx.send("**wavU** is offline now")
+                await ctx.send('Argument invalid, *options:* **common**, **channel** or **personal**')
 
     @commands.command()
     async def status(self, ctx):
         servers = all_servers(False)
+        status = ""
         for server in servers:
-            if server[1] == ctx.message.guild.name:
+            if server[1] == ctx.message.guild.id:
                 if server[2]:
-                    await ctx.send("**wavU** is online")
+                    status = status + "**wavU** is **online** for common :white_check_mark:\n"
                 else:
-                    await ctx.send("**wavU** is offline")
+                    status = status + "**wavU** is **offline** for common :x:\n"
+                if server[3]:
+                    status = status + "**wavU** is **online** for channel :white_check_mark:\n"
+                else:
+                    status = status + "**wavU** is **offline** for channel :x:\n"
+                if server[4]:
+                    status = status + "**wavU** is **online** for personal :white_check_mark:\n"
+                else:
+                    status = status + "**wavU** is **offline** for personal :x:\n"
+
+                await ctx.send(status)
 
 
 def setup(client):

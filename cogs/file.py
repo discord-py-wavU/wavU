@@ -1,17 +1,16 @@
-from discord.ext import commands
-import discord
-
-import os
-import requests
-import config
 import asyncio
 import functools
-
-from shutil import move
-
+import os
+import zipfile
 from os import listdir
 from os.path import isfile, join
-import zipfile
+from shutil import move
+
+import discord
+import requests
+from discord.ext import commands
+
+import config
 
 
 class FileManagement(commands.Cog):
@@ -28,17 +27,41 @@ class FileManagement(commands.Cog):
         f.close()
 
     @staticmethod
-    def create_folder(ctx, arg):
-        if arg is not None:
+    async def create_folder(ctx, arg):
+        valid = True
+        all_channel = ctx.message.guild.voice_channels
+        name_channel = [channel.name for channel in all_channel]
+        if arg in [channel.name for channel in all_channel]:
+            s_channel = all_channel[name_channel.index(arg)]
+            new_path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(s_channel.id)
+        elif ctx.message.mentions:
             new_path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
-        else:
+        elif arg is None:
             new_path = config.path + "/" + str(ctx.message.guild.id)
-        if not os.path.exists(new_path):
+        else:
+            await ctx.send('No valid argument, please try again.\n'
+                           "If your channel's name has spaces you need to use quotes\n"
+                           'ex.: "Channel with spaces"'
+                           '\nType **' + config.prefix + 'help** for more information')
+            valid = False
+            new_path = None
+
+        if valid and not os.path.exists(new_path):
             os.makedirs(new_path)
+
+        return valid
 
     @staticmethod
     def set_path(ctx, arg, msg):
-        if arg is not None:
+        all_channel = ctx.message.guild.voice_channels
+        name_channel = [channel.name for channel in all_channel]
+        if arg in [channel.name for channel in all_channel]:
+            s_channel = all_channel[name_channel.index(arg)]
+            path = 'audio/' + str(ctx.message.guild.id) + "/" + str(s_channel.id) + '/' + msg.attachments[0].filename
+            mov = 'audio/' + str(ctx.message.guild.id) + '/' + str(s_channel.id)
+            file_path = str(ctx.message.guild.id) + "/" + str(s_channel.id)
+            filename = ctx.message.guild.name + "/" + s_channel.name
+        elif arg is not None:
             path = ('audio/' + str(ctx.message.guild.id) + '/' +
                     str(ctx.message.mentions[0].id) + '/' + msg.attachments[0].filename)
             mov = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
@@ -53,9 +76,12 @@ class FileManagement(commands.Cog):
         return path, mov, filename, file_path
 
     @staticmethod
-    def required_role(ctx):
+    async def required_role(ctx):
         has_role = True
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
+            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
+                           + "administrator permissions are able to assign _**FM**_ role."
+                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
             has_role = False
 
         return has_role
@@ -63,22 +89,22 @@ class FileManagement(commands.Cog):
     @commands.command(aliases=['a', 'Add'])
     async def add(self, ctx, arg=None):
 
-        has_role = self.required_role(ctx)
+        has_role = await self.required_role(ctx)
 
         if not has_role:
-            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
-                           + "administrator permissions are able to assign _**FM**_ role."
-                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
             return
 
         loop = self.client.loop or asyncio.get_event_loop()
-        await ctx.send("Upload a **.mp3** file or **cancel**", delete_after=30)
+        valid = await self.create_folder(ctx, arg)
 
-        self.create_folder(ctx, arg)
+        if not valid:
+            return
+
+        await ctx.send("Upload a **.mp3** file or **cancel**", delete_after=30)
 
         def check(m):
             return (m.content == "cancel" or m.content == "Cancel" or m.attachments) \
-                   and m.author.guild.name == ctx.message.guild.name
+                   and m.author.guild.id == ctx.message.guild.id
 
         try:
             msg = await self.client.wait_for('message', check=check, timeout=30)
@@ -102,12 +128,8 @@ class FileManagement(commands.Cog):
                 async with ctx.typing():
                     fn = functools.partial(self.add_song, path, request_msg)
                     await loop.run_in_executor(None, fn)
-                if arg is not None:
-                    await ctx.send('**' + msg.attachments[0].filename + "** has been added to **"
-                                   + ctx.message.guild.name + '/' + str(ctx.message.mentions[0]) + '**')
-                else:
-                    await ctx.send('**' + msg.attachments[0].filename +
-                                   "** has been added to **" + ctx.message.guild.name + '**')
+
+                await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**')
             else:
                 await ctx.send("This is not a _**.mp3**_ file", delete_after=15)
             await asyncio.sleep(15)
@@ -146,21 +168,23 @@ class FileManagement(commands.Cog):
     @commands.command(aliases=['Unzip'])
     async def unzip(self, ctx, arg=None):
 
-        has_role = self.required_role(ctx)
+        has_role = await self.required_role(ctx)
 
         if not has_role:
-            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
-                           + "administrator permissions are able to assign _**FM**_ role."
-                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
             return
 
         loop = self.client.loop or asyncio.get_event_loop()
+
+        valid = await self.create_folder(ctx, arg)
+
+        if not valid:
+            return
+
         await ctx.send("Upload a **.zip** file or **cancel**", delete_after=30)
-        self.create_folder(ctx, arg)
 
         def check(m):
             return (m.content == "cancel" or m.content == "Cancel" or m.attachments) \
-                   and m.author.guild.name == ctx.message.guild.name
+                   and m.author.guild.id == ctx.message.guild.id
 
         try:
             msg = await self.client.wait_for('message', check=check, timeout=30)
@@ -206,13 +230,24 @@ class FileManagement(commands.Cog):
             await ctx.message.delete()
 
     @staticmethod
-    def get_path(ctx, arg):
-        if arg is not None:
+    async def get_path(ctx, arg):
+        valid = True
+        all_channel = ctx.message.guild.voice_channels
+        name_channel = [channel.name for channel in all_channel]
+        if arg in [channel.name for channel in all_channel]:
+            s_channel = all_channel[name_channel.index(arg)]
+            path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(s_channel.id)
+        elif ctx.message.mentions:
             path = config.path + '/' + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
-        else:
+        elif arg is None:
             path = config.path + "/" + str(ctx.message.guild.id)
+        else:
+            await ctx.send('No valid argument, please try again.'
+                           '\nType "' + config.prefix + 'help" for more information')
+            valid = False
+            path = None
 
-        return path
+        return path, valid
 
     @staticmethod
     def get_list_songs(path):
@@ -227,14 +262,14 @@ class FileManagement(commands.Cog):
     @commands.command(aliases=['Delete', 'del', 'Del', 'remove', 'Remove', 'rm', 'Rm', 'RM'])
     async def delete(self, ctx, arg=None):
 
-        has_role = self.required_role(ctx)
+        has_role = await self.required_role(ctx)
         if not has_role:
-            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
-                           + "administrator permissions are able to assign _**FM**_ role."
-                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
             return
 
-        path = self.get_path(ctx, arg)
+        path, valid = await self.get_path(ctx, arg)
+
+        if not valid:
+            return
 
         songs = self.get_list_songs(path)
 
@@ -249,7 +284,7 @@ class FileManagement(commands.Cog):
             await ctx.send("Choose a _number_ to delete a _**.mp3**_ file", delete_after=30)
 
             def check(m):
-                return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) \
+                return (m.content.isdigit() and m.author.guild.id == ctx.message.guild.id) \
                        or m.content == "cancel" or m.content == "Cancel" or m.content == "all" \
                        or m.content == "All"
 
@@ -287,14 +322,14 @@ class FileManagement(commands.Cog):
     @commands.command(aliases=['Edit'])
     async def edit(self, ctx, arg=None):
 
-        has_role = self.required_role(ctx)
+        has_role = await self.required_role(ctx)
         if not has_role:
-            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
-                           + "administrator permissions are able to assign _**FM**_ role."
-                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
             return
 
-        path = self.get_path(ctx, arg)
+        path, valid = await self.get_path(ctx, arg)
+
+        if not valid:
+            return
 
         songs = self.get_list_songs(path)
 
@@ -308,12 +343,12 @@ class FileManagement(commands.Cog):
             await ctx.send("Choose a _number_ to edit a _**.mp3**_ file _name_", delete_after=30)
 
             def check_number(m):
-                return (m.content.isdigit() and m.author.guild.name == ctx.message.guild.name) \
+                return (m.content.isdigit() and m.author.guild.id == ctx.message.guild.id) \
                        or m.content == "cancel" or m.content == "Cancel" or m.content == "all" \
                        or m.content == "All"
 
             def check_name(m):
-                return m.author.guild.name == ctx.message.guild.name \
+                return m.author.guild.id == ctx.message.guild.id \
                        or m.content == "cancel" or m.content == "Cancel"
 
             try:
@@ -356,7 +391,12 @@ class FileManagement(commands.Cog):
 
     @staticmethod
     def dl_file(ctx, arg):
-        if arg is not None:
+        all_channel = ctx.message.guild.voice_channels
+        name_channel = [channel.name for channel in all_channel]
+        if arg in [channel.name for channel in all_channel]:
+            s_channel = all_channel[name_channel.index(arg)]
+            file_path = 'audio/' + str(ctx.message.guild.id) + "/" + str(s_channel.id)
+        elif arg is not None:
             file_path = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
         else:
             file_path = 'audio/' + str(ctx.message.guild.id)
@@ -366,14 +406,14 @@ class FileManagement(commands.Cog):
     @commands.command(aliases=['Download', 'dl', 'Dl', 'DL'])
     async def download(self, ctx, arg=None):
 
-        has_role = self.required_role(ctx)
+        has_role = await self.required_role(ctx)
         if not has_role:
-            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
-                           + "administrator permissions are able to assign _**FM**_ role."
-                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
             return
 
-        path = self.get_path(ctx, arg)
+        path, valid = await self.get_path(ctx, arg)
+
+        if not valid:
+            return
 
         songs = self.get_list_songs(path)
 
@@ -387,7 +427,7 @@ class FileManagement(commands.Cog):
             await ctx.send("Choose a _number_ to download a _**.mp3**_ file", delete_after=30)
 
             def check(m):
-                return m.author.guild.name == ctx.message.guild.name \
+                return m.author.guild.id == ctx.message.guild.id \
                        or m.content == "cancel" or m.content == "Cancel"
 
             try:
@@ -421,7 +461,10 @@ class FileManagement(commands.Cog):
     @commands.command(name='list', aliases=['show', 'List', 'Show'])
     async def show_list(self, ctx, arg=None):
 
-        path = self.get_path(ctx, arg)
+        path, valid = await self.get_path(ctx, arg)
+
+        if not valid:
+            return
 
         songs = self.get_list_songs(path)
 
@@ -432,6 +475,34 @@ class FileManagement(commands.Cog):
             await ctx.send("List .mp3 files:\n" + list_songs, delete_after=60)
         else:
             await ctx.send('_List is empty_')
+
+    @staticmethod
+    async def path_zipping(ctx, arg):
+        valid = True
+        all_channel = ctx.message.guild.voice_channels
+        name_channel = [channel.name for channel in all_channel]
+        if arg in [channel.name for channel in all_channel]:
+            s_channel = all_channel[name_channel.index(arg)]
+            path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(s_channel.id)
+            filename = ctx.message.guild.name + "/" + s_channel.name
+            file_path = str(ctx.message.guild.id) + "/" + str(s_channel.id)
+        elif ctx.message.mentions:
+            path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
+            filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
+            file_path = str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
+        elif arg is None:
+            path = config.path + "/" + str(ctx.message.guild.id)
+            filename = ctx.message.guild.name
+            file_path = str(ctx.message.guild.id)
+        else:
+            await ctx.send('No valid argument, please try again.'
+                           '\nType "' + config.prefix + 'help" for more information')
+            valid = False
+            path = None
+            filename = None
+            file_path = None
+
+        return path, filename, file_path, valid
 
     @staticmethod
     def zipping(file_path, path):
@@ -457,23 +528,16 @@ class FileManagement(commands.Cog):
     @commands.command(aliases=['Zip', 'z', 'Z'])
     async def zip(self, ctx, arg=None):
 
-        has_role = self.required_role(ctx)
+        has_role = await self.required_role(ctx)
 
         if not has_role:
-            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
-                           + "administrator permissions are able to assign _**FM**_ role."
-                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
             return
 
         loop = self.client.loop or asyncio.get_event_loop()
-        if arg is not None:
-            path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
-            filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
-            file_path = str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
-        else:
-            path = config.path + "/" + str(ctx.message.guild.id)
-            filename = ctx.message.guild.name
-            file_path = str(ctx.message.guild.id)
+        path, filename, file_path, valid = await self.path_zipping(ctx, arg)
+
+        if not valid:
+            return
 
         async with ctx.typing():
             fn = functools.partial(self.zipping, file_path, path)
