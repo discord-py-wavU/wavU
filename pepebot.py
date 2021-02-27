@@ -1,6 +1,9 @@
 import asyncio
 import logging
 import os
+from shutil import copy
+from os.path import isfile, join
+from os import listdir
 
 import discord
 import discord.utils
@@ -25,13 +28,21 @@ async def on_ready():
 async def on_guild_join(guild):
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).administrator:
-            channel = await guild.create_text_channel('wavU')
-            await channel.send(
+            owner = await client.fetch_user(guild.owner_id)
+            await owner.send(
                 "Thanks for adding me to your server!\n"
                 "Here is my personal discord server if you want to be part of this community\n"
                 + content.server_link)
 
             await guild.create_role(name='FM', reason="necessary to control bot's commands", mentionable=True)
+
+            default_songs_path = config.path + '/default_audios/'
+            path = config.path + "/" + str(guild.id)
+            if not os.path.exists(path):
+                os.makedirs(path)
+            songs = [f for f in listdir(default_songs_path) if isfile(join(default_songs_path, f)) and '.mp3' in f]
+            for song in songs:
+                copy(default_songs_path + song, path)
 
             db.add_server(str(guild.id))
         break
