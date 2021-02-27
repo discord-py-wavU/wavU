@@ -92,7 +92,7 @@ def all_servers(show):
 def server_delete(server_id):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute('''DELETE FROM servers WHERE server_name=? 
+    c.execute('''DELETE FROM servers WHERE server_id=? 
               ''', (server_id,))
 
     conn.commit()
