@@ -2,11 +2,13 @@ import asyncio
 import functools
 import os
 import zipfile
+from datetime import datetime
 from os import listdir
 from os.path import isfile, join
 from shutil import move
 
 import discord
+import mutagen
 import requests
 from discord.ext import commands
 
@@ -129,7 +131,15 @@ class FileManagement(commands.Cog):
                     fn = functools.partial(self.add_song, path, request_msg)
                     await loop.run_in_executor(None, fn)
 
-                await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**')
+                path = config.path + '/' + file_path + '/' + msg.attachments[0].filename
+                audio = mutagen.File(path)
+
+                if int(audio.info.length) < 10:
+                    await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**')
+                else:
+                    await ctx.send('**' + msg.attachments[0].filename + '** is longer than 10 seconds, **add** was '
+                                                                        'aborted')
+                    os.remove(path)
             else:
                 await ctx.send("This is not a _**.mp3**_ file", delete_after=15)
             await asyncio.sleep(15)
@@ -141,7 +151,7 @@ class FileManagement(commands.Cog):
             await ctx.message.delete()
 
     @staticmethod
-    def unzip_songs(file_path, path, r):
+    def unzip_songs(file_path, path, r, zip_name):
 
         with open('audio/' + file_path + '.zip', 'wb') as f:
             for chunk in r.iter_content():
@@ -149,21 +159,35 @@ class FileManagement(commands.Cog):
                     f.write(chunk)
         f.close()
 
-        is_valid = True
-
         with zipfile.ZipFile('audio/' + file_path + '.zip', 'r') as zip_ref:
-            songs = zip_ref.namelist()
-
-            for song in songs:
-                mp3 = song.split('.')
+            files = zip_ref.namelist()
+            valid_files = []
+            invalid_files_format = []
+            for file in files:
+                mp3 = file.split('.')
                 if mp3[len(mp3) - 1] != "mp3":
-                    is_valid = False
+                    invalid_files_format.append(file)
+                else:
+                    valid_files.append(file)
 
-            if is_valid:
-                zip_ref.extractall(path)
+            invalid_files_duration = []
+
+            if valid_files:
+                zip_ref.extractall(path, members=valid_files)
                 zip_ref.close()
 
-        return is_valid
+                for file in valid_files:
+                    path = config.path + '/' + file_path + '/' + zip_name + '/' + file
+                    audio = mutagen.File(path)
+                    d = datetime.fromtimestamp(int(audio.info.length)).strftime("%M:%S")
+                    if int(audio.info.length) >= 10:
+                        invalid_files_duration.append((file, d))
+                        os.remove(path)
+
+                for file in invalid_files_duration:
+                    valid_files.remove(file[0])
+
+        return valid_files, invalid_files_format, invalid_files_duration
 
     @commands.command(aliases=['Unzip'])
     async def unzip(self, ctx, arg=None):
@@ -202,12 +226,13 @@ class FileManagement(commands.Cog):
             path, mov, filename, file_path = self.set_path(ctx, arg, msg)
 
             r = requests.get(msg.attachments[0].url, headers=headers, stream=False)
+            zip_name = msg.attachments[0].filename
 
             async with ctx.typing():
-                fn = functools.partial(self.unzip_songs, file_path, path, r)
-                is_valid = await loop.run_in_executor(None, fn)
+                fn = functools.partial(self.unzip_songs, file_path, path, r, zip_name)
+                valid_files, invalid_files_format, invalid_files_duration = await loop.run_in_executor(None, fn)
 
-            if is_valid:
+            if valid_files:
                 for root, dirs, files in os.walk(path):
                     for file in files:
                         move(root + '/' + file, mov + '/' + file)
@@ -215,7 +240,27 @@ class FileManagement(commands.Cog):
                 os.rmdir(path)
                 os.remove('audio/' + file_path + '.zip')
 
-                await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**')
+                valid_text = ""
+
+                for file in valid_files:
+                    valid_text = valid_text + ":white_check_mark:" + file + "\n"
+
+                invalid_format_text = ""
+                if invalid_files_format:
+                    invalid_format_text = "Invalid files format:\n"
+
+                    for file in invalid_files_format:
+                        invalid_format_text = invalid_format_text + ":x:" + file + "\n"
+
+                invalid_duration_text = ""
+                if invalid_files_duration:
+                    invalid_duration_text = "Invalid files duration:\n"
+
+                    for file in invalid_files_duration:
+                        invalid_duration_text = invalid_duration_text + ":x:" + file[0] + " " + file[1] + "\n"
+
+                await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**\n' +
+                               'Valid files:\n' + valid_text + invalid_format_text + invalid_duration_text)
                 await asyncio.sleep(30)
                 await msg.delete()
             else:
