@@ -1,17 +1,17 @@
+import asyncio
+import os
+import shutil
+from os import listdir
+from os.path import isfile, join
+from shutil import copy
+
 import discord
 import discord.utils
 from discord.ext import commands
 
-from cogs import db
-import content
 import config
-
-import shutil
-import asyncio
-import os
-from shutil import copy
-from os.path import isfile, join
-from os import listdir
+import content
+from cogs import db
 
 
 class Management(commands.Cog):
@@ -72,14 +72,14 @@ class Management(commands.Cog):
                 for song in songs:
                     copy(default_songs_path + song, path)
 
-                db.add_server(str(guild.id))
+                db.add_server(guild.id)
             break
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         path = config.path + '/' + str(guild.id)
         shutil.rmtree(path)
-        db.server_delete(str(guild.id))
+        db.server_delete(guild.id, None)
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -87,7 +87,7 @@ class Management(commands.Cog):
                           "everytime someone joins in and play any random audio this server has. To know more "
                           "about me, type **=help**. Have a nice day!")
 
-        await asyncio.sleep(3*60*60)
+        await asyncio.sleep(3 * 60 * 60)
 
         msgs = member.dm_channel
         async for msg in msgs.history(limit=10):

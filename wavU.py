@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import shutil
 
 import discord
 import discord.utils
@@ -60,19 +61,35 @@ async def help(ctx):
 
 
 async def daily_task():
+    try:
+        db.create_table()
+    except:
+        logging.info("Table is already created")
+
     servers_ = db.all_servers(False)
+
     guilds = client.guilds
     for guild in guilds:
+        id = 0
         is_in = True
         repeated = 0
         for server in servers_:
             if guild.id == server[1]:
                 repeated += 1
                 is_in = False
+                id = server[0]
+
         if repeated == 2:
-            db.server_delete(str(guild.id))
+            db.server_delete(guild.id, id)
         if is_in:
-            db.add_server(str(guild.id))
+            db.add_server(guild.id)
+
+    for server in servers_:
+        if server[1] not in [guild.id for guild in guilds]:
+            db.server_delete(server[1], server[0])
+            path = config.path + '/' + str(server[1])
+            if os.path.exists(path):
+                shutil.rmtree(path)
 
     await asyncio.sleep(24 * 60 * 60)
     await daily_task()

@@ -1,5 +1,7 @@
 import sqlite3
+
 from discord.ext import commands
+
 import config
 
 
@@ -89,12 +91,15 @@ def all_servers(show):
     return items
 
 
-def server_delete(server_id):
+def server_delete(server_id, id=None):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute('''DELETE FROM servers WHERE server_id=? 
-              ''', (server_id,))
-
+    if id is not None:
+        c.execute('''DELETE FROM servers WHERE server_id=? AND rowid=?
+                  ''', (server_id, id))
+    else:
+        c.execute('''DELETE FROM servers WHERE server_id=?
+                  ''', (server_id,))
     conn.commit()
     conn.close()
 
