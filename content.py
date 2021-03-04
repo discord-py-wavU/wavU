@@ -16,44 +16,49 @@ description = "This is **all** the commands you can use\n\n" \
 field_title_add = f"`{pre}add` `{pre}a`"
 field_description_add = f"__add__ adds a mp3 file to main files.\n" \
                         f"*Optional:* `@mention` adds a mp3 for a specific person.\n" \
-                        f"*Optional:* `#channel` adds a mp3 for a specific channel.\n"
+                        f"*Optional:* `Voice channel` adds a mp3 for a specific channel.\n"
 
 field_title_choose = f"`{pre}choose` `{pre}ch` `{pre}c`"
 field_description_choose = f"__choose__ chooses a mp3 file to play from main files.\n" \
                            f"*Optional:* `@mention` chooses a mp3 to play from a specific person.\n" \
-                           f"*Optional:* `#channel` chooses a mp3 to play from a specific channel.\n"
+                           f"*Optional:* `Voice channel` chooses a mp3 to play from a specific channel.\n"
 
 field_title_download = f"`{pre}download` `{pre}dl`"
 field_description_download = f"__download__ downloads a mp3 file from main files.\n" \
                              f"*Optional:* `@mention` downloads a mp3 file from a specific person.\n" \
-                             f"*Optional:* `#channel` downloads a mp3 file from a specific channel."
+                             f"*Optional:* `Voice channel` downloads a mp3 file from a specific channel."
 
 field_title_unzip = f"`{pre}unzip` "
 field_description_unzip = f"__unzip__ unzips all the mp3 files in it to main files.\n" \
                           f"*Optional:* `@mention` unzips all the mp3 files in it to " \
                           f"a specific person.\n" \
-                          f"*Optional:* `#channel` unzips all the mp3 files in it to " \
+                          f"*Optional:* `Voice channel` unzips all the mp3 files in it to " \
                           f"a specific channel.\n"
 
 field_title_zip = f"`{pre}zip` `{pre}z`"
 field_description_zip = f"__zip__ zips all the mp3 files saved in main files.\n" \
                         f"*Optional:* `@mention` zips all the mp3 files saved in a specific person.\n" \
-                        f"*Optional:* `#channel` zips all the mp3 files saved in a specific channel."
+                        f"*Optional:* `Voice channel` zips all the mp3 files saved in a specific channel."
 
 field_title_delete = f"`{pre}delete` `{pre}del` `{pre}remove` `{pre}rm` "
 field_description_delete = f"__delete__ removes one mp3 file from main files.\n" \
                            f"*Optional:* `@mention` removes one mp3 file from a specific person.\n" \
-                           f"*Optional:* `#channel` removes one mp3 file from a specific channel."
+                           f"*Optional:* `Voice channel` removes one mp3 file from a specific channel."
 
 field_title_edit = f"`{pre}edit`"
 field_description_edit = f"__edit__ edits the name of one mp3 file from main files.\n" \
                          f"*Optional:* `@mention` edits the name of one mp3 file from a specific person.\n" \
-                         f"*Optional:* `#channel` edits the name of one mp3 file from a specific channel."
+                         f"*Optional:* `Voice channel` edits the name of one mp3 file from a specific channel."
 
 field_title_list = f"`{pre}list` `{pre}show`"
 field_description_list = f"__list__ shows all the mp3 files from main files.\n" \
                          f"*Optional:* `@mention` shows all the mp3 files from a specific person.\n" \
-                         f"*Optional:* `#channel` shows all the mp3 files from a specific channel."
+                         f"*Optional:* `Voice channel` shows all the mp3 files from a specific channel."
+
+field_title_volume = f"`{pre}volume` `{pre}vol`"
+field_description_volume = f"__volume__ changes the mp3 file volume from one main files.\n" \
+                           f"*Optional:* `@mention`  changes the mp3 file volume from one specific person.\n" \
+                           f"*Optional:* `Voice channel`  changes the mp3 file volume from one specific channel."
 
 field_title_stop = f"`{pre}stop` `{pre}disconnect` `{pre}disc` `{pre}shutup`"
 field_description_stop = f"__stop__ silences the bot and disconnect it if it's in."

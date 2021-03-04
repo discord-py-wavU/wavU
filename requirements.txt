@@ -3,3 +3,4 @@ youtube_dl
 discord.py
 requests
 mutagen
+pydub
