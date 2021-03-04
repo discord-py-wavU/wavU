@@ -159,8 +159,18 @@ class VoiceCommands(commands.Cog):
 
         return audio_to_play
 
+    @staticmethod
+    async def delete_message(msg):
+        await asyncio.sleep(30)
+        await msg.delete()
+
     @commands.command(aliases=['Choose', 'ch', 'c', 'Ch', 'C'])
     async def choose(self, ctx, arg=None):
+
+        if ctx.author.voice is None:
+            await ctx.send("You need to be connected on a **Voice channel**")
+            return
+
         loop = self.client.loop or asyncio.get_event_loop()
 
         songs = await self.search_songs(ctx, arg)
@@ -174,15 +184,18 @@ class VoiceCommands(commands.Cog):
             await ctx.send("Choose a number to play a _**.mp3**_ file or _**cancel**_", delete_after=30)
 
             def check(m):
-                return (m.content.isdigit() and m.author.guild.id == ctx.message.guild.id) \
+                return (m.content.isdigit() and
+                        m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
                        or m.content == "cancel" or m.content == "Cancel"
 
             try:
                 for i in range(3):
                     msg = await self.client.wait_for('message', check=check, timeout=30)
                     if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-                        await ctx.send("**" + songs[int(msg.content) - 1] + '** was chosen')
+
                         channel = ctx.author.voice.channel
+                        await ctx.send("**" + songs[int(msg.content) - 1] + '** was chosen')
+
                         voice = await channel.connect()
 
                         audio_to_play = self.path_choose(ctx, arg, msg, songs)
@@ -203,16 +216,16 @@ class VoiceCommands(commands.Cog):
 
                         if voice.is_connected() and not voice.is_playing():
                             await voice.disconnect()
-                            await msg.delete()
+                            loop.create_task(self.delete_message(msg))
                         break
                     elif msg.content == "cancel" or msg.content == "Cancel":
                         await ctx.send("Nothing has been _**chosen**_")
-                        await msg.delete()
+                        loop.create_task(self.delete_message(msg))
                         break
                     elif int(msg.content) > len(songs) or int(msg.content) == 0:
                         await ctx.send("That number is not an option. Try again **(" + str(i + 1) + "/3)**",
                                        delete_after=10)
-                        await msg.delete()
+                        loop.create_task(self.delete_message(msg))
                         if i == 2:
                             await ctx.send("None of the attempts were correct, _**choose**_ has been aborted")
             except asyncio.TimeoutError:
