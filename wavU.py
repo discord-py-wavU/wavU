@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import shutil
+import sys
 
 import discord
 import discord.utils
@@ -94,6 +95,19 @@ async def daily_task():
 
     await asyncio.sleep(24 * 60 * 60)
     await daily_task()
+
+
+def restart_program():
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
+
+
+@client.command(aliases=['resetbot'])
+async def reset_bot(ctx, arg=None):
+    await ctx.message.delete()
+    if ctx.message.author.id == "299737676092014592" or ctx.message.author.id == "299737676092014592" or \
+            ctx.message.author.id == "206965831433715714":
+        restart_program()
 
 
 for filename in os.listdir('./cogs'):
