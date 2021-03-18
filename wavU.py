@@ -52,7 +52,6 @@ async def help(ctx):
     embed.add_field(name=content.field_title_list, value=content.field_description_list, inline=False)
     embed.add_field(name=content.field_title_volume, value=content.field_description_volume, inline=False)
     embed.add_field(name=content.field_title_stop, value=content.field_description_stop, inline=False)
-    embed.add_field(name=content.field_title_soundpad, value=content.field_description_soundpad, inline=False)
     embed.add_field(name=content.field_title_on, value=content.field_description_on, inline=False)
     embed.add_field(name=content.field_title_off, value=content.field_description_off, inline=False)
     embed.add_field(name=content.field_title_status, value=content.field_description_status, inline=False)

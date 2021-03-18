@@ -60,21 +60,17 @@ field_description_volume = f"__volume__ changes the mp3 file volume from one mai
                            f"*Optional:* `@mention`  changes the mp3 file volume from one specific person.\n" \
                            f"*Optional:* `Voice channel`  changes the mp3 file volume from one specific channel."
 
-field_title_soundpad = f"`{pre}soundpad` `{pre}sp`"
-field_description_soundpad = f"__soundpad__ displays an interface to play any file of all the server and\n" \
-                             f"turns off all the features about in/out voice channel when user connects."
-
 field_title_stop = f"`{pre}stop` `{pre}disconnect` `{pre}disc` `{pre}shutup`"
 field_description_stop = f"__stop__ silences the bot and disconnect it if it's in."
 
-field_title_on = f"`{pre}on <argument>` *arguments:* `common`, `channel`, `personal` or `all`"
+field_title_on = f"`{pre}on <argument>` *arguments:* `common`, `channel` or `personal`"
 field_description_on = f"__on__ enable the feature of `<argument>`."
 
-field_title_off = f"`{pre}off <argument>` *arguments:* `common`, `channel`, `personal` or `all`"
-field_description_off = f"__off__ disable the feature of `<argument>.`"
+field_title_off = f"`{pre}off <argument>` *arguments:* `common`, `channel` or `personal`"
+field_description_off = f"__off__ disable the feature of `<argument>`"
 
-field_title_status = f"`{pre}status`"
-field_description_status = f"__show__ show all the status of the features."
+field_title_status = f"`{pre}status <argument>` *arguments:* `common`, `channel` or `personal`"
+field_description_status = f"__show__ show the status of the feature `<argument>`."
 
 field_title_role = f"`{pre}role @mention`"
 field_description_role = f"__role__ gives FM (File manager) role to a specific person."

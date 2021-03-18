@@ -16,15 +16,13 @@ class VoiceCommands(commands.Cog):
 
     def __init__(self, client):
         self.client = client
-        self.queue = {}
 
     @staticmethod
     def check_db(member):
-        servers = db.all_servers(True)
+        servers = db.all_servers(False)
         serv = True
         chan = True
         per = True
-        soun = False
         for server in servers:
             if member.guild.id == server[1] and server[2] == 0:
                 serv = False
@@ -32,10 +30,8 @@ class VoiceCommands(commands.Cog):
                 chan = False
             if member.guild.id == server[1] and server[4] == 0:
                 per = False
-            if member.guild.id == server[1] and server[5] == 1:
-                soun = True
 
-        return serv, chan, per, soun
+        return serv, chan, per
 
     @staticmethod
     async def connect(voice, after):
@@ -61,13 +57,9 @@ class VoiceCommands(commands.Cog):
     async def search_song(self, path, member, after):
 
         is_empty = True
-        serv, chan, per, soun = self.check_db(member)
-
+        serv, chan, per = self.check_db(member)
         audio_to_play = []
         voice = get(self.client.voice_clients, guild=member.guild)
-
-        if soun:
-            return audio_to_play, voice, is_empty
 
         audios_to_play = self.search(path + '/' + str(member.id))
 
@@ -107,36 +99,30 @@ class VoiceCommands(commands.Cog):
             audio_to_play, voice, is_empty = await self.search_song(self, path, member, after)
 
             if not is_empty:
-
                 try:
-                    if str(member.guild.id) not in self.queue:
-                        loop.create_task(self.start_playing(self, voice, member, audio_to_play))
+                    if not voice.is_playing():
+                        partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                        await loop.run_in_executor(None, partial)
+                        await asyncio.sleep(2)
                     else:
-                        self.queue[str(member.guild.id)].append(audio_to_play)
+                        while voice.is_playing():
+                            await asyncio.sleep(0.5)
+                        partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                        await loop.run_in_executor(None, partial)
+                        await asyncio.sleep(0.5)
+
+                    while voice.is_playing():
+                        await asyncio.sleep(1)
+
+                    if voice.is_connected() and not voice.is_playing():
+                        await voice.disconnect()
 
                 except discord.ClientException as e:
                     print("Error: " + str(e))
-        elif after.channel is None and len(before.channel.members) == 0:
-            voice = get(self.client.voice_clients, guild=member.guild)
+        elif after.channel is None and len(before.channel.members) == 1:
+            voice = get(self.client.voice_clients)
             if voice and voice.is_connected():
                 await voice.disconnect()
-
-    @staticmethod
-    async def start_playing(self, voice, member, path_to_play):
-        loop = self.client.loop or asyncio.get_event_loop()
-        self.queue[str(member.guild.id)] = [path_to_play]
-
-        i = 0
-        while i < len(self.queue[str(member.guild.id)]):
-            partial = functools.partial(voice.play, discord.FFmpegPCMAudio(self.queue[str(member.guild.id)][i]))
-            await loop.run_in_executor(None, partial)
-            while voice.is_playing():
-                await asyncio.sleep(0.3)
-            i += 1
-
-        del self.queue[str(member.guild.id)]
-
-        await voice.disconnect()
 
     @staticmethod
     async def search_songs(ctx, arg):
@@ -210,17 +196,27 @@ class VoiceCommands(commands.Cog):
                         channel = ctx.author.voice.channel
                         await ctx.send("**" + songs[int(msg.content) - 1] + '** was chosen')
 
-                        voice = get(self.client.voice_clients, guild=ctx.message.author.guild)
-
-                        if not voice:
-                            voice = await channel.connect()
+                        voice = await channel.connect()
 
                         audio_to_play = self.path_choose(ctx, arg, msg, songs)
 
-                        if str(ctx.message.guild.id) not in self.queue:
-                            loop.create_task(self.start_playing(self, voice, ctx.message.author, audio_to_play))
+                        if not voice.is_playing():
+                            partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                            await loop.run_in_executor(None, partial)
+
                         else:
-                            self.queue[str(ctx.message.guild.id)].append(audio_to_play)
+                            while voice.is_playing():
+                                await asyncio.sleep(0.5)
+                            partial = functools.partial(voice.play, discord.FFmpegPCMAudio(audio_to_play))
+                            await loop.run_in_executor(None, partial)
+                            await asyncio.sleep(0.5)
+
+                        while voice.is_playing():
+                            await asyncio.sleep(1)
+
+                        if voice.is_connected() and not voice.is_playing():
+                            await voice.disconnect()
+                            loop.create_task(self.delete_message(msg))
                         break
                     elif msg.content == "cancel" or msg.content == "Cancel":
                         await ctx.send("Nothing has been _**chosen**_")
@@ -241,10 +237,9 @@ class VoiceCommands(commands.Cog):
 
     @commands.command(aliases=['shutup', 'disconnect', 'disc', 'Shutup', 'Stop', 'Disconnect', 'Disc'])
     async def stop(self, ctx):
-        voice = get(self.client.voice_clients, guild=ctx.message.author.guild)
-        if voice is not None and voice.is_playing():
-            voice.stop()
-            await voice.disconnect()
+        if ctx.voice_client is not None and ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+            await ctx.voice_client.disconnect()
             await ctx.send("**wavU** was stopped and disconnected")
         else:
             await ctx.send("**wavU** is not connected")

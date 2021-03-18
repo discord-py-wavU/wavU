@@ -17,8 +17,7 @@ def create_table():
                  server_id int,
                  serv_state int,
                  chan_state int,
-                 per_state int,
-                 sound_pad int
+                 per_state int
              )''')
 
     # Commit command
@@ -28,18 +27,10 @@ def create_table():
     conn.close()
 
 
-def table_drop():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE servers")
-    conn.commit()
-    conn.close()
-
-
 def add_server(server_id):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute("INSERT INTO servers VALUES (?,1,0,1,0)", (server_id,))
+    c.execute("INSERT INTO servers VALUES (?,1,0,1)", (server_id,))
 
     conn.commit()
     conn.close()
@@ -57,25 +48,13 @@ def edit_server(state, server_id):
     conn.close()
 
 
-def sound_pad_state(state, server_id):
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute('''UPDATE servers 
-                 SET sound_pad=?
-                 WHERE server_id=?
-              ''', (state, server_id))
-
-    conn.commit()
-    conn.close()
-
-
 def edit_channel(state, server_id):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('''UPDATE servers 
                  SET chan_state=?
                  WHERE server_id=?
-              ''', (state, server_id))
+            ''', (state, server_id))
 
     conn.commit()
     conn.close()
@@ -88,18 +67,6 @@ def edit_personal(state, server_id):
                  SET per_state=?
                  WHERE server_id=?
               ''', (state, server_id))
-
-    conn.commit()
-    conn.close()
-
-
-def edit_all(state, server_id):
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute('''UPDATE servers 
-                 SET per_state=?, chan_state=?, serv_state=?
-                 WHERE server_id=?
-              ''', (state, state, state, server_id))
 
     conn.commit()
     conn.close()
@@ -155,15 +122,10 @@ class Status(commands.Cog):
             elif arg == "personal":
                 edit_personal(1, str(ctx.message.guild.id))
                 await ctx.send("**wavU** is online for personal :white_check_mark:")
-            elif arg == "all":
-                edit_all(1, str(ctx.message.guild.id))
-                await ctx.send("**wavU** is online for common :white_check_mark:\n" +
-                               "**wavU** is online for channels :white_check_mark:\n" +
-                               "**wavU** is online for personal :white_check_mark:")
             elif arg is None:
-                await ctx.send('Argument is needed, *options:* **common**, **channel**, **personal** or **all**')
+                await ctx.send('Argument is needed, *options:* **common**, **channel** or **personal**')
             else:
-                await ctx.send('Argument invalid, *options:* **common**, **channel**, **personal** or **all**')
+                await ctx.send('Argument invalid, *options:* **common**, **channel** or **personal**')
 
     @commands.command(alieses=['Off'])
     async def off(self, ctx, arg=None):
@@ -182,11 +144,6 @@ class Status(commands.Cog):
             elif arg == "personal":
                 edit_personal(0, str(ctx.message.guild.id))
                 await ctx.send("**wavU** is offline for personal :x:")
-            elif arg == "all":
-                edit_all(0, str(ctx.message.guild.id))
-                await ctx.send("**wavU** is offline for common :x:\n" +
-                               "**wavU** is offline for channels :x:\n" +
-                               "**wavU** is offline for personal :x:")
             else:
                 await ctx.send('Argument invalid, *options:* **common**, **channel** or **personal**')
 
@@ -210,12 +167,6 @@ class Status(commands.Cog):
                     status = status + "**wavU** is **offline** for personal :x:\n"
 
                 await ctx.send(status)
-
-    @commands.command()
-    async def drop_table(self, ctx):
-        await ctx.message.delete()
-        await ctx.send("table dropped", delete_after=5)
-        table_drop()
 
 
 def setup(client):
