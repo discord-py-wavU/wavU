@@ -104,6 +104,18 @@ def server_delete(server_id, id=None):
     conn.close()
 
 
+def edit_all(state, server_id):
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('''UPDATE servers 
+                 SET per_state=?, chan_state=?, serv_state=?
+                 WHERE server_id=?
+              ''', (state, state, state, server_id))
+
+    conn.commit()
+    conn.close()
+
+
 class Status(commands.Cog):
 
     @commands.command(alieses=['On'])
@@ -122,10 +134,15 @@ class Status(commands.Cog):
             elif arg == "personal":
                 edit_personal(1, str(ctx.message.guild.id))
                 await ctx.send("**wavU** is online for personal :white_check_mark:")
+            elif arg == "all":
+                edit_all(1, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is online for common :white_check_mark:\n" +
+                               "**wavU** is online for channels :white_check_mark:\n" +
+                               "**wavU** is online for personal :white_check_mark:")
             elif arg is None:
-                await ctx.send('Argument is needed, *options:* **common**, **channel** or **personal**')
+                await ctx.send('Argument is needed, *options:* **common**, **channel**, **personal** or **all**')
             else:
-                await ctx.send('Argument invalid, *options:* **common**, **channel** or **personal**')
+                await ctx.send('Argument invalid, *options:* **common**, **channel**, **personal** or **all**')
 
     @commands.command(alieses=['Off'])
     async def off(self, ctx, arg=None):
@@ -144,8 +161,15 @@ class Status(commands.Cog):
             elif arg == "personal":
                 edit_personal(0, str(ctx.message.guild.id))
                 await ctx.send("**wavU** is offline for personal :x:")
+            elif arg == "all":
+                edit_all(0, str(ctx.message.guild.id))
+                await ctx.send("**wavU** is offline for common :x:\n" +
+                               "**wavU** is offline for channels :x:\n" +
+                               "**wavU** is offline for personal :x:")
+            elif arg is None:
+                await ctx.send('Argument is needed, *options:* **common**, **channel**, **personal** or **all**')
             else:
-                await ctx.send('Argument invalid, *options:* **common**, **channel** or **personal**')
+                await ctx.send('Argument invalid, *options:* **common**, **channel**, **personal** or **all**')
 
     @commands.command()
     async def status(self, ctx):
