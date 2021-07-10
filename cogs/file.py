@@ -186,6 +186,13 @@ class FileManagement(commands.Cog):
 
         if str(msg_time.content).count(' to '):
             message = msg_time.content.split(' to ')
+        elif str(msg_time.content) == "Entire" or str(msg_time.content) == "entire":
+            if 10 > file_duration:
+                return 0, 0, 0, file_duration, is_valid_format
+            else:
+                is_valid_format = False
+                await ctx.send("The entire video is longer than 10 seconds, please try again", delete_after=60)
+                return 0, 0, 0, 0, is_valid_format
         else:
             is_valid_format = False
             await ctx.send("Incorrect format, please try again", delete_after=60)
@@ -293,7 +300,8 @@ class FileManagement(commands.Cog):
         await ctx.send("File is uploading to trim... Please wait", delete_after=60)
         await ctx.send(file=discord.File(fp=link_path + '/' + msg_name.content + '.mp3',
                                          filename=msg_name.content + '.mp3'), delete_after=60)
-        await ctx.send('Please select the audio segment (**MM:SS** to **MM:SS**) you wish to use\n'
+        await ctx.send('Please select the audio segment (**MM:SS** to **MM:SS**) you wish to use'
+                       'or type *entire*\n'
                        'This segment must not be longer than 10 seconds', delete_after=60)
 
         while True:
