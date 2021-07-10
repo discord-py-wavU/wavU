@@ -22,7 +22,8 @@ logging.basicConfig(level=logging.INFO)
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))
     logging.info("Bot is ready")
-    await daily_task()
+    if config.mainbot:
+        await daily_task()
 
 
 @client.command(aliases=['serv', 'ser'])
@@ -106,7 +107,8 @@ def restart_program():
 async def reset_bot(ctx, arg=None):
     await ctx.message.delete()
     if ctx.message.author.id == "299737676092014592" or ctx.message.author.id == "299737676092014592" or \
-            ctx.message.author.id == "206965831433715714":
+            ctx.message.author.id == "206965831433715714" or ctx.message.author.id == "569392059312504844":
+        logging.info('The program was restarted')
         restart_program()
 
 

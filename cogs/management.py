@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import shutil
 from os import listdir
@@ -77,12 +78,14 @@ class Management(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
+        logging.info(f'The server {guild.name} was removed')
         path = config.path + '/' + str(guild.id)
         shutil.rmtree(path)
         db.server_delete(guild.id, None)
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        logging.info(f'The server {member.guild.name} was joined')
         await member.send(f"Welcome to **{member.guild.name}**, i'm wavU and i'll appear on *Voice channels* "
                           "everytime someone joins in and play any random audio this server has. To know more "
                           "about me, type **=help**. Have a nice day!")
