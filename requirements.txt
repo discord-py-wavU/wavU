@@ -4,3 +4,4 @@ discord.py
 requests
 mutagen
 pydub
+pymongo

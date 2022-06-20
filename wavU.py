@@ -22,8 +22,6 @@ logging.basicConfig(level=logging.INFO)
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))
     logging.info("Bot is ready")
-    if config.mainbot:
-        await daily_task()
 
 
 @client.command(aliases=['serv', 'ser'])
@@ -61,41 +59,6 @@ async def help(ctx):
     embed.add_field(name=content.field_title_invite, value=content.field_description_invite, inline=False)
     embed.add_field(name=content.field_title_join, value=content.field_description_join, inline=False)
     await ctx.send(embed=embed)
-
-
-async def daily_task():
-    try:
-        db.create_table()
-    except:
-        logging.info("Table is already created")
-
-    servers_ = db.all_servers(False)
-
-    guilds = client.guilds
-    for guild in guilds:
-        id = 0
-        is_in = True
-        repeated = 0
-        for server in servers_:
-            if guild.id == server[1]:
-                repeated += 1
-                is_in = False
-                id = server[0]
-
-        if repeated == 2:
-            db.server_delete(guild.id, id)
-        if is_in:
-            db.add_server(guild.id)
-
-    for server in servers_:
-        if server[1] not in [guild.id for guild in guilds]:
-            db.server_delete(server[1], server[0])
-            path = config.path + '/' + str(server[1])
-            if os.path.exists(path):
-                shutil.rmtree(path)
-
-    await asyncio.sleep(24 * 60 * 60)
-    await daily_task()
 
 
 def restart_program():

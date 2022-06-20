@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import functools
 import logging
 import os
@@ -14,6 +15,7 @@ import requests
 import youtube_dl
 from discord.ext import commands
 from pydub import AudioSegment
+from pymongo import MongoClient
 
 import config
 
@@ -22,6 +24,10 @@ class FileManagement(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+        mongo_url = config.mongo
+        cluster = MongoClient(mongo_url)
+        db = cluster["main"]
+        self.files_collection = db["files"]
 
     @staticmethod
     def add_song(path, r):
@@ -32,22 +38,23 @@ class FileManagement(commands.Cog):
         f.close()
 
     @staticmethod
-    async def create_folder(ctx, arg):
+    async def embed_msg(ctx, name, value, delete=None):
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=name,
+                        value=value,
+                        inline=False)
+        await ctx.send(embed=embed, delete_after=delete)
+
+    @staticmethod
+    async def create_folder(self, ctx, arg):
+        path = f"{config.path}/{ctx.message.guild.id}"
         valid = True
-        all_channel = ctx.message.guild.voice_channels
-        name_channel = [channel.name for channel in all_channel]
-        if arg in [channel.name for channel in all_channel]:
-            s_channel = all_channel[name_channel.index(arg)]
-            new_path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(s_channel.id)
-        elif ctx.message.mentions:
-            new_path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
-        elif arg is None:
-            new_path = config.path + "/" + str(ctx.message.guild.id)
+        if ctx.message.mentions or arg is None:
+            new_path = path
         else:
-            await ctx.send('No valid argument, please try again.\n'
-                           "If your channel's name has spaces you need to use quotes\n"
-                           'ex.: "Channel with spaces"'
-                           '\nType **' + config.prefix + 'help** for more information')
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 'No valid argument, please try again.\n'
+                                 f"\nType ** {config.prefix}help** for more information", 30)
             valid = False
             new_path = None
 
@@ -57,62 +64,19 @@ class FileManagement(commands.Cog):
         return valid
 
     @staticmethod
-    def set_path(ctx, arg, msg):
-        all_channel = ctx.message.guild.voice_channels
-        name_channel = [channel.name for channel in all_channel]
-        if arg in [channel.name for channel in all_channel]:
-            s_channel = all_channel[name_channel.index(arg)]
-            path = 'audio/' + str(ctx.message.guild.id) + "/" + str(s_channel.id) + '/' + msg.attachments[0].filename
-            mov = 'audio/' + str(ctx.message.guild.id) + '/' + str(s_channel.id)
-            file_path = str(ctx.message.guild.id) + "/" + str(s_channel.id)
-            filename = ctx.message.guild.name + "/" + s_channel.name
-        elif arg is not None:
-            path = ('audio/' + str(ctx.message.guild.id) + '/' +
-                    str(ctx.message.mentions[0].id) + '/' + msg.attachments[0].filename)
-            mov = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
-            file_path = str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
-            filename = ctx.message.guild.name + "/" + str(ctx.message.mentions[0])
-        else:
-            path = 'audio/' + str(ctx.message.guild.id) + '/' + msg.attachments[0].filename
-            mov = 'audio/' + str(ctx.message.guild.id)
-            file_path = str(ctx.message.guild.id)
-            filename = ctx.message.guild.name
-
-        return path, mov, filename, file_path
-
-    @staticmethod
-    async def required_role(ctx):
+    async def required_role(self, ctx):
         has_role = True
         if "FM" not in (roles.name for roles in ctx.message.author.roles):
-            await ctx.send("You need _**FM**_ role to use this command.\nOnly members who have "
-                           + "administrator permissions are able to assign _**FM**_ role."
-                           + "\nCommand: \"**" + config.prefix + "role @mention**\"")
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 f"You need _**FM**_ role to use this command.\n"
+                                 "Only members who have administrator permissions are able to assign _**FM**_ role.\n"
+                                 f"Command: \"**{config.prefix} role @mention**\"")
             has_role = False
 
         return has_role
 
     @staticmethod
-    def set_link_path(ctx, arg):
-        all_channel = ctx.message.guild.voice_channels
-        name_channel = [channel.name for channel in all_channel]
-        if arg in [channel.name for channel in all_channel]:
-            s_channel = all_channel[name_channel.index(arg)]
-            link_path = 'audio/' + str(ctx.message.guild.id) + '/' + str(s_channel.id)
-            absolute_path = config.path + '/' + str(ctx.message.guild.id) + '/' + str(s_channel.id)
-            filename = ctx.message.guild.name + '/' + s_channel.name
-        elif arg is not None:
-            link_path = 'audio/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
-            absolute_path = config.path + '/' + str(ctx.message.guild.id) + '/' + str(ctx.message.mentions[0].id)
-            filename = ctx.message.guild.name + '/' + ctx.message.mentions[0].name
-        else:
-            link_path = 'audio/' + str(ctx.message.guild.id)
-            absolute_path = config.path + '/' + str(ctx.message.guild.id)
-            filename = ctx.message.guild.name
-
-        return link_path, absolute_path, filename
-
-    @staticmethod
-    async def link(ctx, url, path):
+    async def link(self, ctx, url):
 
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -129,7 +93,9 @@ class FileManagement(commands.Cog):
                 file_title = info_dict.get('id', None)
                 file_duration = info_dict.get('duration', None)
 
-            file_path = path + '/' + file_title + ".mp3"
+            path = f"{config.path}/{ctx.message.guild.id}"
+
+            file_path = f"{path}/{file_title}.mp3"
 
             ydl_opts.update({'outtmpl': file_path})
 
@@ -139,7 +105,8 @@ class FileManagement(commands.Cog):
             return file_title, file_duration
         except Exception as e:
             logging.info(e)
-            await ctx.send("The video is unavailable or that doesn't exist, **add** was aborted")
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 "The video was unavailable or does not exist, **wavU** could not add it", 30)
             return None, None
 
     @staticmethod
@@ -148,204 +115,247 @@ class FileManagement(commands.Cog):
         await msg.delete()
 
     @staticmethod
-    async def file_size(ctx, absolute_path, file_title):
+    async def file_size(self, ctx, file_title):
 
         max_file_size = 8 * 1024 * 1024
         isvalid = True
 
-        if max_file_size < stat(absolute_path + '/' + str(file_title) + '.mp3').st_size:
-            await ctx.send("This size of the audio is too large, **add** was aborted")
-            os.remove(absolute_path + '/' + str(file_title) + '.mp3')
+        path = f"{config.path}/{ctx.message.guild.id}"
+
+        file_path = f"{path}/{file_title}.mp3"
+
+        if max_file_size < stat(path).st_size:
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 "This size of the audio is too large, **wavU** could not add it", 30)
+            os.remove(file_path)
             isvalid = False
 
         return isvalid
 
     @staticmethod
-    async def choose_file_name(ctx, absolute_path, file_title, msg_name):
+    async def choose_file_name(self, ctx, path, file_title, msg_name):
 
         name_valid = False
 
-        if not os.path.exists(absolute_path + '/' + msg_name.content + '.mp3'):
+        if not os.path.exists(path + '/' + msg_name.content + '.mp3'):
             try:
-                os.rename(absolute_path + '/' + str(file_title) + '.mp3',
-                          absolute_path + '/' + msg_name.content + '.mp3')
+                os.rename(path + '/' + str(file_title) + '.mp3',
+                          path + '/' + msg_name.content + '.mp3')
             except Exception as e:
                 logging.info(e)
-                await ctx.send("Invalid name, please try a different name", delete_after=60)
-
+                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                     "Invalid name, please try a different name", 60)
             name_valid = True
         else:
-            await ctx.send("This file already exists, please try a different name", delete_after=60)
-
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 "This file already exists, please try a different name", 60)
         return name_valid
 
     @staticmethod
-    async def valid_format(ctx, msg_time, file_duration):
+    def time_parser(times):
+        time = 0
 
-        is_valid_format = True
+        if len(times) == 1:
+            return times[0]
+
+        for index, t in enumerate(times):
+            if index == 0:
+                time += t * 60
+            elif index == 1:
+                time += t
+            else:
+                time += t / 1000
+
+        return time
+
+    @staticmethod
+    async def valid_format(self, ctx, msg_time, file_duration):
+
+        is_valid_format = False
+        begin_times = 0
+        end_times = 0
 
         if str(msg_time.content).count(' to '):
             message = msg_time.content.split(' to ')
-        elif str(msg_time.content) == "Entire" or str(msg_time.content) == "entire":
+        elif str(msg_time.content).lower() == "entire":
             if 10 > file_duration:
-                return 0, 0, 0, file_duration, is_valid_format
+                return 0, file_duration, True
             else:
-                is_valid_format = False
-                await ctx.send("The entire video is longer than 10 seconds, please try again", delete_after=60)
-                return 0, 0, 0, 0, is_valid_format
+                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                     "The entire video is longer than 10 seconds, please try again", 60)
+                return begin_times, end_times, is_valid_format
         else:
-            is_valid_format = False
-            await ctx.send("Incorrect format, please try again", delete_after=60)
-            return 0, 0, 0, 0, is_valid_format
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 "Incorrect format, please try again", 60)
+            return begin_times, end_times, is_valid_format
 
         begin = message[0].split(':')
         end = message[1].split(':')
 
-        isvalid_begin = False
-        isvalid_end = False
-        begin0 = 0
-        begin1 = 0
-        end0 = 0
-        end1 = 0
-
-        if len(begin) == 1:
-            isvalid_begin = begin[0].isdigit()
-        elif len(begin) == 2:
-            isvalid_begin = begin[0].isdigit() and begin[1].isdigit()
-
-        if len(end) == 1:
-            isvalid_end = end[0].isdigit()
-        elif len(end) == 2:
-            isvalid_end = end[0].isdigit() and end[1].isdigit()
+        isvalid_begin = sum(map(lambda x: x.isdigit(), begin))
+        isvalid_end = sum(map(lambda x: x.isdigit(), end))
 
         if isvalid_begin and isvalid_end:
 
-            if len(begin) == 1:
-                begin1 = int(begin[0])
-            elif len(begin) == 2:
-                begin0 = int(begin[0])
-                begin1 = int(begin[1])
+            list_times_begin = list(map(lambda x: int(x), begin))
+            list_times_end = list(map(lambda x: int(x), end))
 
-            if len(end) == 1:
-                end1 = int(end[0])
-            elif len(end) == 2:
-                end0 = int(end[0])
-                end1 = int(end[1])
+            begin_times = self.time_parser(list_times_begin)
+            end_times = self.time_parser(list_times_end)
+
         else:
-            is_valid_format = False
-            await ctx.send("Incorrect format, please try again", delete_after=60)
-            return 0, 0, 0, 0, is_valid_format
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 "Incorrect format, please try again", 60)
+            return begin_times, end_times, is_valid_format
 
-        if begin0 * 60 + begin1 > file_duration or end0 * 60 + end1 > file_duration:
-            await ctx.send("The audio segments should not surpass the file length, please try again", delete_after=60)
-            is_valid_format = False
-            return 0, 0, 0, 0, is_valid_format
+        if begin_times > file_duration or end_times > file_duration:
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 "The audio segments should not surpass the file length, please try again", 60)
+            return begin_times, end_times, is_valid_format
 
-        return begin0, begin1, end0, end1, is_valid_format
+        return begin_times, end_times, True
 
     @staticmethod
-    async def confirm_file(ctx, absolute_path, msg_confirm, msg_name, filename):
+    async def insert_file_db(self, ctx, arg, filename):
+        guild_id = ctx.message.guild.id
+        user_id = int(arg[2:-1]) if arg is not None else 0
+
+        key = {"guild_id": guild_id, "user_id": user_id,
+               "audio_name": filename}
+        value = {"$setOnInsert": {"guild_id": guild_id, "user_id": user_id,
+                                  "audio_name": filename}}
+        self.files_collection.update_one(key, value, upsert=True)
+
+        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                             f"**{filename}** was added to **{ctx.message.guild.name}**")
+
+    @staticmethod
+    async def confirm_file(self, ctx, arg, path, msg_confirm, msg_name):
 
         is_confirmed = False
         is_no = False
 
-        if msg_confirm.content == "cancel" or msg_confirm.content == "Cancel":
-            os.remove(absolute_path + '/' + msg_name.content + '.mp3')
-            os.remove(absolute_path + '/' + msg_name.content + '_trim' + '.mp3')
-            await ctx.send('Nothing has been _**added**_')
+        if str(msg_confirm.content).lower() == "cancel":
+            os.remove(f"{path}/{msg_name.content}.mp3")
+            os.remove(f"{path}/{msg_name.content}_trim.mp3")
+            await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                 "Nothing has been **added**", 30)
 
-        elif msg_confirm.content == "yes" or msg_confirm.content == "Yes" or \
-                msg_confirm.content == "YES" or msg_confirm.content == "y" or msg_confirm.content == "Y":
-            os.remove(absolute_path + '/' + msg_name.content + '.mp3')
-            os.rename(absolute_path + '/' + msg_name.content + '_trim' + '.mp3',
-                      absolute_path + '/' + msg_name.content + '.mp3')
-            await ctx.send('**' + msg_name.content + '.mp3' + '** was added to **' + filename + '**')
+        elif str(msg_confirm.content).lower() in "yes":
+            os.remove(f"{path}/{msg_name.content}.mp3")
+            os.rename(f"{path}/{msg_name.content}_trim.mp3",
+                      f"{path}/{msg_name.content}.mp3")
+            await self.insert_file_db(self, ctx, arg, msg_name.content)
             is_confirmed = True
-        elif msg_confirm.content == "no" or msg_confirm.content == "No" or msg_confirm.content == "NO" or \
-                msg_confirm.content == "n" or msg_confirm.content == "N":
-            os.remove(absolute_path + '/' + msg_name.content + '_trim' + '.mp3')
-            await ctx.send('Please select the audio segment (**MM:SS** to **MM:SS**) you wish to use\n'
-                           'This segment must not be longer than 10 seconds', delete_after=60)
+        elif str(msg_confirm.content).lower() in "no":
+            os.remove(f"{path}/{msg_name.content}_trim.mp3")
+            await self.embed_msg(ctx, f"Let's try again {ctx.message.author.name}",
+                                 "I need the audio segment to cut your audio\n"
+                                 "Format: (**MM:SS:MS** to **MM:SS:MS**)\n"
+                                 "MM = Minutes, SS = Seconds, MS = Milliseconds.\n"
+                                 "If you want the entire audio type *entire*\n"
+                                 "This segment must not be longer than 10 seconds.", 60)
             is_no = True
 
         return is_confirmed, is_no
 
     @staticmethod
-    async def link_file(self, ctx, absolute_path, file_title, file_duration, link_path, filename, loop):
+    async def link_file(self, ctx, arg, file_title, file_duration, loop):
 
-        isvalid = await self.file_size(ctx, absolute_path, file_title)
+        path = f"{config.path}/{ctx.message.guild.id}"
+
+        isvalid = await self.file_size(self, ctx, file_title)
         if not isvalid:
             return
 
+        await self.embed_msg(ctx, f"Please {ctx.message.author.name}",
+                             "Choose a name for the new file", 60)
+
         while True:
             def check(m):
-                return m.content == "cancel" or m.content == "Cancel" \
+                return str(m.content).lower() == "cancel" \
                        or (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
 
-            await ctx.send("Choose a name for the new **.mp3** file", delete_after=60)
             msg_name = await self.client.wait_for('message', check=check, timeout=600)
+
+            file_exists = self.files_collection.find_one({"guild_id": ctx.message.guild.id,
+                                                          "audio_name": f"{msg_name.content}.mp3"})
+
+            if file_exists or os.path.exists(f"{path}/{msg_name.content}.mp3"):
+                await ctx.send(file=discord.File(fp=f"{path}/{msg_name.content}.mp3",
+                                                 filename=f"{msg_name.content}.mp3"), delete_after=60)
+                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                     "This filename already exists, try again",
+                                     60)
+                continue
 
             loop.create_task(self.delete_message(msg_name, 60))
 
-            if msg_name.content == "cancel" or msg_name.content == "Cancel":
-                await ctx.send('Nothing has been _**added**_')
-                os.remove(absolute_path + '/' + str(file_title) + '.mp3')
+            if str(msg_name.content).lower() == "cancel":
+                await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                     "Nothing has been **added**", 30)
+                os.remove(f"{path}/{file_title}.mp3")
                 return
 
-            name_valid = await self.choose_file_name(ctx, absolute_path, file_title, msg_name)
+            name_valid = await self.choose_file_name(self, ctx, path, file_title, msg_name)
 
             if name_valid:
                 break
 
-        await ctx.send("File is uploading to trim... Please wait", delete_after=60)
-        await ctx.send(file=discord.File(fp=link_path + '/' + msg_name.content + '.mp3',
-                                         filename=msg_name.content + '.mp3'), delete_after=60)
-        await ctx.send('Please select the audio segment (**MM:SS** to **MM:SS**) you wish to use'
-                       'or type *entire*\n'
-                       'This segment must not be longer than 10 seconds', delete_after=60)
+        await self.embed_msg(ctx, f"I'm working on your file",
+                             "Please wait a few seconds", 60)
+        await ctx.send(file=discord.File(fp=f"{path}/{msg_name.content}.mp3",
+                                         filename=f"{msg_name.content}.mp3"), delete_after=60)
+        await self.embed_msg(ctx, f"Let's do this {ctx.message.author.name}",
+                             "I need the audio segment to cut your audio\n"
+                             "Format: (**MM:SS:MS** to **MM:SS:MS**)\n"
+                             "MM = Minutes, SS = Seconds, MS = Milliseconds.\n"
+                             "If you want the entire audio type *entire*\n"
+                             "This segment must not be longer than 10 seconds.", 60)
 
         while True:
             def check(m):
-                return m.content == "cancel" or m.content == "Cancel" \
+                return str(m.content).lower() == "cancel" \
                        or (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
 
             msg_time = await self.client.wait_for('message', check=check, timeout=600)
 
             loop.create_task(self.delete_message(msg_time, 60))
 
-            if msg_time.content == "cancel" or msg_time.content == "Cancel":
-                await ctx.send('Nothing has been _**added**_')
-                os.remove(absolute_path + '/' + msg_name.content + '.mp3')
+            if str(msg_time.content).lower() == "cancel":
+                await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                     "Nothing has been **added**", 30)
+                os.remove(path + '/' + msg_name.content + '.mp3')
                 break
 
-            begin0, begin1, end0, end1, is_valid_format = await self.valid_format(ctx, msg_time, file_duration)
+            begin_times, end_times, is_valid_format = await self.valid_format(self, ctx, msg_time, file_duration)
 
             if not is_valid_format:
                 continue
 
-            if 0 <= end0 * 60 + end1 - (begin0 * 60 + begin1) <= 10:
-                await ctx.send("File is trimming and uploading... Please wait", delete_after=60)
-                file = AudioSegment.from_file(absolute_path + '/' + msg_name.content + '.mp3')
-                file_trim = file[(begin0 * 60 + begin1) * 1000:(end0 * 60 + end1) * 1000]
-                file_trim.export(absolute_path + '/' + msg_name.content + '_trim' + '.mp3', format="mp3")
+            if 0 <= end_times - begin_times <= 10:
+                await self.embed_msg(ctx, f"I'm working on your file",
+                                     "Please wait a few seconds", 60)
+                file = AudioSegment.from_file(path + '/' + msg_name.content + '.mp3')
+                file_trim = file[begin_times * 1000:end_times * 1000]
+                file_trim.export(path + '/' + msg_name.content + '_trim' + '.mp3', format="mp3")
 
-                await ctx.send(file=discord.File(fp=link_path + '/' + msg_name.content + '_trim.mp3',
-                                                 filename=msg_name.content + '_trim' + '.mp3'), delete_after=60)
-                await ctx.send("Would you like to keep this **.mp3** file?\n"
-                               "Type **yes** to keep it or **no** to cut it again, or **cancel**", delete_after=60)
+                await ctx.send(file=discord.File(fp=f"{path}/{msg_name.content}_trim.mp3",
+                                                 filename=f"{msg_name.content}_trim.mp3"), delete_after=60)
+                await self.embed_msg(ctx, f"Would you like to keep this file?",
+                                     "Type **yes** to keep it or **no** to cut it again, or **cancel**", 60)
                 while True:
                     def check(m):
-                        return m.content == "cancel" or m.content == "Cancel" or m.content == "yes" \
-                               or m.content == "Yes" or m.content == "YES" or m.content == "y" or m.content == "Y" \
-                               or m.content == "no" or m.content == "No" or m.content == "NO" or m.content == "n" \
-                               or m.content == "N" and \
-                               (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
+                        return str(m.content).lower() == "cancel" \
+                               or str(m.content).lower() in "yes" \
+                               or str(m.content).lower() in "no" \
+                               or (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
 
                     msg_confirm = await self.client.wait_for('message', check=check, timeout=600)
 
                     loop.create_task(self.delete_message(msg_confirm, 60))
 
-                    is_confirmed, is_no = await self.confirm_file(ctx, absolute_path, msg_confirm, msg_name, filename)
+                    is_confirmed, is_no = await self.confirm_file(self, ctx, arg, path, msg_confirm, msg_name)
 
                     if is_confirmed or is_no:
                         break
@@ -356,49 +366,53 @@ class FileManagement(commands.Cog):
                     continue
 
             else:
-                await ctx.send("The file duration is longer than 10 seconds or lower than 0, please try again",
-                               delete_after=60)
+                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                     "The file duration is longer than 10 seconds or lower than 0, please try again",
+                                     60)
 
     @commands.command(aliases=['a', 'Add'])
     async def add(self, ctx, arg=None):
 
-        has_role = await self.required_role(ctx)
+        valid = await self.create_folder(self, ctx, arg)
+
+        if not valid:
+            return
+
+        has_role = await self.required_role(self, ctx)
 
         if not has_role:
             return
 
         loop = self.client.loop or asyncio.get_event_loop()
-        valid = await self.create_folder(ctx, arg)
 
-        if not valid:
-            return
-
-        await ctx.send("Upload a **.mp3** file, **youtube link** or **cancel**", delete_after=30)
+        await self.embed_msg(ctx, f"Hi {ctx.message.author.name}! Glad to see you :heart_eyes:",
+                             "Please, upload an **audio** file, **youtube link** or type **cancel**", 30)
 
         def check(m):
-            return (m.content == "cancel" or m.content == "Cancel" or m.attachments or
+            return (str(m.content).lower() == "cancel" or m.attachments or
                     'youtube' in m.content or 'youtu.be' in m.content) \
                    and (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
 
         try:
             msg = await self.client.wait_for('message', check=check, timeout=600)
 
-            if msg.content == "cancel" or msg.content == "Cancel":
-                await ctx.send('Nothing has been _**added**_')
+            if str(msg.content).lower() == "cancel":
+                await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                     "Nothing has been **added**", 30)
                 loop.create_task(self.delete_message(msg, 30))
                 return
 
             if 'youtube' in msg.content or 'youtu.be' in msg.content:
                 loop.create_task(self.delete_message(msg, 60))
 
-                link_path, absolute_path, filename = self.set_link_path(ctx, arg)
-                await ctx.send("Preparing file... Please wait", delete_after=60)
-                file_title, file_duration = await self.link(ctx, msg.content, link_path)
+                await self.embed_msg(ctx, f"Processing file... :gear: :tools:",
+                                     "Please wait a few seconds :hourglass:", 60)
+                file_title, file_duration = await self.link(self, ctx, msg.content)
 
                 if file_title is None or file_duration is None:
                     return
 
-                await self.link_file(self, ctx, absolute_path, file_title, file_duration, link_path, filename, loop)
+                await self.link_file(self, ctx, arg, file_title, file_duration, loop)
 
                 return
 
@@ -406,28 +420,37 @@ class FileManagement(commands.Cog):
                 'User-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0'
             }
 
-            path, mov, filename, file_path = self.set_path(ctx, arg, msg)
-
             request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=False)
+            filename = msg.attachments[0].filename
+            path = f"{config.path}/{ctx.message.guild.id}/{filename}"
+            mp3 = filename.split('.')
 
-            mp3 = msg.attachments[0].filename.split('.')
+            file_exists = self.files_collection.find_one({"guild_id": ctx.message.guild.id,
+                                                          "audio_name": filename})
+
+            if file_exists or os.path.exists(path):
+                await ctx.send(file=discord.File(fp=path, filename=filename), delete_after=60)
+                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                     "This filename already exists \n",
+                                     60)
+
             if mp3[len(mp3) - 1] == "mp3":
                 async with ctx.typing():
                     fn = functools.partial(self.add_song, path, request_msg)
                     await loop.run_in_executor(None, fn)
 
-                path = config.path + '/' + file_path + '/' + msg.attachments[0].filename
                 audio = mutagen.File(path)
 
                 if int(audio.info.length) < 10:
-                    await ctx.send('**' + msg.attachments[0].filename + '** was added to **' + filename + '**')
+                    await self.insert_file_db(self, ctx, arg, filename)
                 else:
-                    await ctx.send('**' + msg.attachments[0].filename + '** is longer than 10 seconds, **add** was '
-                                                                        'aborted')
+                    await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                         f"**{filename}** is longer than 10 seconds, **wavU** could not add it", 60)
                     os.remove(path)
             else:
-                await ctx.send("This is not a _**.mp3**_ file", delete_after=15)
-            loop.create_task(self.delete_message(msg, 15))
+                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                     f"This is not a **.mp3** file, **wavU** could not add it", 30)
+            loop.create_task(self.delete_message(msg, 30))
 
         except asyncio.TimeoutError:
             await ctx.send('Timeout!', delete_after=15)
@@ -483,7 +506,7 @@ class FileManagement(commands.Cog):
 
         loop = self.client.loop or asyncio.get_event_loop()
 
-        valid = await self.create_folder(ctx, arg)
+        valid = await self.create_folder(self, ctx, arg)
 
         if not valid:
             return
@@ -614,8 +637,8 @@ class FileManagement(commands.Cog):
             def check(m):
                 return (m.content.isdigit() and
                         m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
-                       or m.content == "cancel" or m.content == "Cancel" or m.content == "all" \
-                       or m.content == "All"
+                       or str(m.content).lower() == "cancel" \
+                       or str(m.content).lower() == "all"
 
             try:
                 for i in range(3):
@@ -693,7 +716,7 @@ class FileManagement(commands.Cog):
                         await ctx.send("Choose a new _name_ or type _**cancel**_ to not edit", delete_after=30)
                         msg_edit = await self.client.wait_for('message', check=check_name, timeout=60)
 
-                        if msg_edit.content == 'cancel' or msg_edit.content == 'Cancel':
+                        if str(msg_edit.content).lower() == "cancel":
                             await ctx.send("Nothing has been _**edited**_")
                         else:
                             os.rename(path + '/' + songs[int(msg.content) - 1],
@@ -761,7 +784,7 @@ class FileManagement(commands.Cog):
 
             def check(m):
                 return (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
-                       or m.content == "cancel" or m.content == "Cancel"
+                       or str(m.content).lower() == "cancel"
 
             try:
                 for i in range(3):
