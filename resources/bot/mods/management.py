@@ -10,9 +10,8 @@ import discord
 import discord.utils
 from discord.ext import commands
 
-import config
 import content
-from cogs import db
+from resources.bot.mods import db
 
 
 class Management(commands.Cog):
@@ -65,6 +64,10 @@ class Management(commands.Cog):
 
                 await guild.create_role(name='FM', reason="necessary to control bot's commands", mentionable=True)
 
+                # ADD SERVER TO DB
+
+                # ADD default audios to new server
+
                 default_songs_path = config.path + '/default_audios/'
                 path = config.path + "/" + str(guild.id)
                 if not os.path.exists(path):
@@ -78,6 +81,9 @@ class Management(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
+
+        # UNASSIGN ALL AUDIOS FROM DB
+
         logging.info(f'The server {guild.name} was removed')
         path = config.path + '/' + str(guild.id)
         shutil.rmtree(path)

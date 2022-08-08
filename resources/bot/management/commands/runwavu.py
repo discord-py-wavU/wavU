@@ -1,40 +1,17 @@
-import asyncio
-import logging
-import os
-import shutil
-import sys
+from os.path import join, dirname, isfile, basename
 
-import discord
+from django.core.management.base import BaseCommand
+import os
 import discord.utils
 from discord.ext import commands
-
+import glob
 import config
 import content
-from cogs import db
+import logging
 
 intents = discord.Intents.default()
 intents.members = True
 client = commands.Bot(command_prefix=config.prefix, help_command=None, intents=intents)
-logging.basicConfig(level=logging.INFO)
-
-
-@client.event
-async def on_ready():
-    await client.change_presence(status=config.status, activity=discord.Game(config.game))
-    logging.info("Bot is ready")
-
-
-@client.command(aliases=['serv', 'ser'])
-async def servers(ctx, arg=None):
-    guilds = client.guilds
-
-    if arg == "names":
-        guilds = [guild.name for guild in guilds]
-        await ctx.send(guilds)
-    elif arg is None:
-        await ctx.send("Amount of servers wavU is in: " + str(len(guilds)))
-    else:
-        await ctx.send("No valid argument")
 
 
 @client.command(aliases=['Help'])
@@ -61,22 +38,44 @@ async def help(ctx):
     await ctx.send(embed=embed)
 
 
-def restart_program():
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
+@client.event
+async def on_ready():
+    await client.change_presence(status=config.status, activity=discord.Game(config.game))
+    logging.info("Bot is ready")
 
 
-@client.command(aliases=['resetbot'])
-async def reset_bot(ctx, arg=None):
-    await ctx.message.delete()
-    if ctx.message.author.id == "299737676092014592" or ctx.message.author.id == "299737676092014592" or \
-            ctx.message.author.id == "206965831433715714" or ctx.message.author.id == "569392059312504844":
-        logging.info('The program was restarted')
-        restart_program()
+@client.command(aliases=['serv', 'ser'])
+async def servers(ctx, arg=None):
+    guilds = client.guilds
+
+    if arg == "names":
+        guilds = [guild.name for guild in guilds]
+        await ctx.send(guilds)
+    elif arg is None:
+        await ctx.send("Amount of servers wavU is in: " + str(len(guilds)))
+    else:
+        await ctx.send("No valid argument")
 
 
-for filename in os.listdir('./cogs'):
-    if filename.endswith('.py'):
-        client.load_extension(f'cogs.{filename[:-3]}')
+class Command(BaseCommand):
+    help = 'Runs the Discord bot'
 
-client.run(config.token)
+    def handle(self, *args, **options):
+        print("Starting bot...\n")
+
+        print("Importing modules:")
+        modules = glob.glob(join(dirname(__file__), "..", "..", "mods", "*.py"))
+        for filename in os.listdir('./cogs'):
+            if filename.endswith('.py'):
+                client.load_extension(f'cogs.{filename[:-3]}')
+
+        for f in modules:
+            if isfile(f) and not f.endswith("__init__.py"):
+                print("   %s ... " % basename(f)[:-3], end="")
+                client.load_extension(f"resources.bot.mods.{basename(f)[:-3]}")
+                print(f"[OK]")
+
+        print("")
+        print("Modules loaded")
+
+        client.run(config.token)

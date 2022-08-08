@@ -1,4 +1,4 @@
-config.py
+enviroments/settings_local.py
 .idea
 __pycache__
 venv

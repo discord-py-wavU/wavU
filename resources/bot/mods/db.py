@@ -2,8 +2,6 @@ import sqlite3
 
 from discord.ext import commands
 
-import config
-
 
 def create_table():
     # Connect to database

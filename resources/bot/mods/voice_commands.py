@@ -4,13 +4,10 @@ import logging
 import random
 from os import listdir
 from os.path import isfile, join
-from pymongo import MongoClient
 
 import discord
 from discord.ext import commands
 from discord.utils import get
-
-import config
 
 
 class VoiceCommands(commands.Cog):
@@ -18,10 +15,6 @@ class VoiceCommands(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.queue = {}
-        mongo_url = config.mongo
-        cluster = MongoClient(mongo_url)
-        db = cluster["main"]
-        self.files_collection = db["files"]
 
     @staticmethod
     async def connect(voice, after):
@@ -107,10 +100,13 @@ class VoiceCommands(commands.Cog):
     @staticmethod
     async def search_songs(self, ctx, arg):
 
+        guild_id = ctx.message.guild.id
+        user_id = int(arg[2:-1]) if arg is not None else 0
+
         if arg is None:
-            audios = self.files_collection.find({"guild_id": ctx.message.guild.id, "user_id": 0})
+            audios = self.files_collection.find({"guild_id": guild_id, "user_id": 0})
         else:
-            audios = self.files_collection.find({"guild_id": ctx.message.guild.id, "user_id": ctx.message.author.id})
+            audios = self.files_collection.find({"guild_id": guild_id, "user_id": user_id})
         audios = list(audios)
 
         songs = list(map(lambda audio: audio["audio_name"], audios))
@@ -134,7 +130,8 @@ class VoiceCommands(commands.Cog):
     async def choose(self, ctx, arg=None):
 
         if ctx.author.voice is None:
-            await ctx.send("You need to be connected on a **Voice channel**")
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
+                                 "You need to be connected on a **Voice channel**", 30)
             return
 
         loop = self.client.loop or asyncio.get_event_loop()
@@ -146,16 +143,14 @@ class VoiceCommands(commands.Cog):
             for index, song in enumerate(songs):
                 list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
             list_songs = list_songs + "cancel"
-            await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
-            await ctx.send("Choose a number to play a _**.mp3**_ file or _**cancel**_", delete_after=30)
-
             await self.embed_msg(ctx, f"List .mp3 files:",
-                                 "Nothing has been **added**", 30)
+                                 "Choose a number to play a _**.mp3**_ file or _**cancel**_\n"
+                                 f"{list_songs}", 30)
 
             def check(m):
                 return (m.content.isdigit() and
                         m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
-                       or m.content == "cancel" or m.content == "Cancel"
+                       or str(m.content).lower() == "cancel"
 
             try:
                 for i in range(3):
@@ -177,7 +172,7 @@ class VoiceCommands(commands.Cog):
                             await asyncio.sleep(1)
                             self.queue[str(ctx.guild.id)].append(audio_to_play)
                         break
-                    elif msg.content == "cancel" or msg.content == "Cancel":
+                    elif str(msg.content).lower() == "cancel":
                         await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                              "Nothing has been **chosen**", 30)
                         loop.create_task(self.delete_message(msg))
@@ -197,7 +192,8 @@ class VoiceCommands(commands.Cog):
                 await asyncio.sleep(15)
                 await ctx.message.delete()
         else:
-            await ctx.send("_List is empty_")
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
+                                 'List is empty')
 
     @commands.command(aliases=['shutup', 'disconnect', 'disc', 'Shutup', 'Stop', 'Disconnect', 'Disc'])
     async def stop(self, ctx):
