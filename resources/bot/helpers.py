@@ -35,6 +35,16 @@ class Helpers:
             return await sync_to_async(lambda: obj_audio.audio)()
 
     @staticmethod
+    async def get_async_audio_list(async_obj, kwargs):
+        audio_name_list = []
+        audio_hashcode_list = []
+        async for obj in async_obj.objects.filter(**kwargs):
+            audio_name_list.append(obj.name)
+            hashcode = await sync_to_async(lambda: obj.audio.hashcode)()
+            audio_hashcode_list.append(hashcode)
+        return audio_name_list, audio_hashcode_list
+
+    @staticmethod
     async def required_role(self, ctx):
         has_role = True
         if "FM" not in (roles.name for roles in ctx.message.author.roles):

@@ -13,7 +13,7 @@ from resources.audio.models import Audio, AudioInEntity, AudioInServer
 from resources.server.models import Server
 from resources.entity.models import Entity
 from resources.bot.helpers import Helpers
-from asgiref.sync import sync_to_async
+import re
 
 class VoiceCommands(commands.Cog, Helpers):
 
@@ -92,24 +92,23 @@ class VoiceCommands(commands.Cog, Helpers):
                 await asyncio.sleep(1)
                 avoid += 1
 
+        del self.queue[str(member.guild.id)]
         await asyncio.sleep(1)
         await voice.disconnect()
 
     @staticmethod
     async def search_songs(self, ctx, arg):
 
-        guild_id = ctx.message.guild.id
-        user_id = int(arg[2:-1]) if arg is not None else 0
+        server = await self.get_object(Server, {'discord_id': ctx.message.guild.id})
 
         if arg is None:
-            audios = self.files_collection.find({"guild_id": guild_id, "user_id": 0})
+            audio_name_list, audio_hashcode_list = await self.get_async_audio_list(AudioInServer, {'server': server})
         else:
-            audios = self.files_collection.find({"guild_id": guild_id, "user_id": user_id})
-        audios = list(audios)
+            discord_id = int(re.findall(r'\b\d+\b', arg)[0])
+            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_id, 'server': server})
+            audio_name_list, audio_hashcode_list = await self.get_async_audio_list(AudioInEntity, {'entity': entity})
 
-        songs = list(map(lambda audio: audio["audio_name"], audios))
-
-        return songs
+        return audio_name_list, audio_hashcode_list
 
     @staticmethod
     async def delete_message(msg):
@@ -134,11 +133,11 @@ class VoiceCommands(commands.Cog, Helpers):
 
         loop = self.client.loop or asyncio.get_event_loop()
 
-        songs = await self.search_songs(self, ctx, arg)
+        audios, hashcodes = await self.search_songs(self, ctx, arg)
 
-        if songs:
+        if audios:
             list_songs = ""
-            for index, song in enumerate(songs):
+            for index, song in enumerate(audios):
                 list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
             list_songs = list_songs + "cancel"
             await self.embed_msg(ctx, f"List .mp3 files:",
@@ -153,11 +152,11 @@ class VoiceCommands(commands.Cog, Helpers):
             try:
                 for i in range(3):
                     msg = await self.client.wait_for('message', check=check, timeout=30)
-                    if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
+                    if msg.content.isdigit() and int(msg.content) <= len(audios) and int(msg.content) != 0:
 
-                        await ctx.send("**" + songs[int(msg.content) - 1] + '** was chosen')
-                        audio_to_play = f"audio/{ctx.message.guild.id}/{songs[int(msg.content) - 1]}"
-
+                        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                             "**" + audios[int(msg.content) - 1] + '** was chosen', 30)
+                        audio_to_play = f"{config.path}/{hashcodes[int(msg.content) - 1]}.mp3"
                         try:
                             if str(ctx.guild.id) not in self.queue:
                                 channel = ctx.author.voice.channel
@@ -175,7 +174,7 @@ class VoiceCommands(commands.Cog, Helpers):
                                              "Nothing has been **chosen**", 30)
                         loop.create_task(self.delete_message(msg))
                         break
-                    elif int(msg.content) > len(songs) or int(msg.content) == 0:
+                    elif int(msg.content) > len(audios) or int(msg.content) == 0:
                         await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                              f'That number is not an option. Try again **({str(i + 1)}"/3)**', 10)
                         await ctx.send("That number is not an option. Try again **(" + str(i + 1) + "/3)**",
