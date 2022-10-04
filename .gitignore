@@ -4,3 +4,4 @@ __pycache__
 venv
 /audio
 database.db
+service\db.sqlite3
