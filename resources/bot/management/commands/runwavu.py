@@ -1,3 +1,4 @@
+import asyncio
 from os.path import join, dirname, isfile, basename
 
 from django.core.management.base import BaseCommand
@@ -9,7 +10,7 @@ import config
 import content
 import logging
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
 client = commands.Bot(command_prefix=config.prefix, help_command=None, intents=intents)
 
@@ -61,14 +62,10 @@ class Command(BaseCommand):
     help = 'Runs the Discord bot'
 
     def handle(self, *args, **options):
-        print("Starting bot...\n")
 
+        print("Starting bot...\n")
         print("Importing modules:")
         modules = glob.glob(join(dirname(__file__), "..", "..", "mods", "*.py"))
-        for filename in os.listdir('./cogs'):
-            if filename.endswith('.py'):
-                client.load_extension(f'cogs.{filename[:-3]}')
-
         for f in modules:
             if isfile(f) and not f.endswith("__init__.py"):
                 print("   %s ... " % basename(f)[:-3], end="")
@@ -79,3 +76,4 @@ class Command(BaseCommand):
         print("Modules loaded")
 
         client.run(config.token)
+

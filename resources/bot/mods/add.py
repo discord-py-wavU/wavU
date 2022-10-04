@@ -215,7 +215,7 @@ class AddCommand(commands.Cog, Helpers):
                 if file_title is None or file_duration is None:
                     return
 
-                await self.link_file(self, ctx, arg, file_title, file_duration, loop)
+                await self.link_file(ctx, arg, file_title, file_duration, loop)
 
                 return
 

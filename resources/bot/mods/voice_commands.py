@@ -8,9 +8,14 @@ from os.path import isfile, join
 import discord
 from discord.ext import commands
 from discord.utils import get
+import config
+from resources.audio.models import Audio, AudioInEntity, AudioInServer
+from resources.server.models import Server
+from resources.entity.models import Entity
+from resources.bot.helpers import Helpers
+from asgiref.sync import sync_to_async
 
-
-class VoiceCommands(commands.Cog):
+class VoiceCommands(commands.Cog, Helpers):
 
     def __init__(self, client):
         self.client = client
@@ -32,36 +37,30 @@ class VoiceCommands(commands.Cog):
 
         return voice
 
-    @staticmethod
-    def search(path):
-        try:
-            audios_to_play = [f for f in listdir(path) if isfile(join(path, f)) and '.mp3' in f]
-        except:
-            audios_to_play = []
-
-        return audios_to_play
-
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
 
         if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user and \
                 not member.bot:
 
-            audios = self.files_collection.find({"guild_id": member.guild.id, "user_id": member.id})
+            # Check first personal audios
+            audio = await self.get_async_audio(Entity, {"discord_id": member.id,
+                                                        'audios__enabled': True,
+                                                        'server__discord_id': member.guild.id})
 
-            audios = list(audios)
+            # Second check channel audios
+            if not audio:
+                audio = await self.get_async_audio(Entity, {"discord_id": member.voice.channel.id,
+                                                            'audios__enabled': True,
+                                                            'server__discord_id': member.guild.id})
 
-            if not len(audios):
-                audios = self.files_collection.find({"guild_id": member.guild.id, "user_id": 0})
-                audios = list(audios)
+            # Third check server audios
+            if not audio:
+                audio = await self.get_async_audio(Server, {"discord_id": member.guild.id, 'enabled': True})
 
-            audios_to_play = audios
+            path = f"{config.path}/{audio.hashcode}.mp3"
 
-            audio = random.choice(audios_to_play)
-
-            path = f"audio/{member.guild.id}/{audio['audio_name']}"
-
-            if audios:
+            if audio:
                 voice = get(self.client.voice_clients, guild=member.guild)
                 voice = await self.connect(voice, after)
                 if str(member.guild.id) not in self.queue:
@@ -93,7 +92,6 @@ class VoiceCommands(commands.Cog):
                 await asyncio.sleep(1)
                 avoid += 1
 
-        del self.queue[str(member.guild.id)]
         await asyncio.sleep(1)
         await voice.disconnect()
 

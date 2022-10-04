@@ -1,5 +1,7 @@
-import config
+import logging
 
+import config
+import re
 from resources.audio.models import Audio, AudioInEntity, AudioInServer
 from resources.server.models import Server
 from resources.entity.models import Entity
@@ -9,6 +11,29 @@ from asgiref.sync import sync_to_async
 
 
 class Helpers:
+
+    @staticmethod
+    async def get_or_create_object(obj, kwargs):
+        return await sync_to_async(obj.objects.get_or_create, thread_sensitive=True)(**kwargs)
+
+    @staticmethod
+    async def filter_object(obj, kwargs):
+        return await sync_to_async(obj.objects.filter, thread_sensitive=True)(**kwargs)
+
+    @staticmethod
+    async def get_object(obj, kwargs):
+        return await sync_to_async(obj.objects.get, thread_sensitive=True)(**kwargs)
+
+    @staticmethod
+    async def get_random_object(obj):
+        return await sync_to_async(obj.objects.order_by('?').first(), thread_sensitive=True)()
+
+    @staticmethod
+    async def get_async_audio(async_obj, kwargs):
+        async for obj in async_obj.objects.filter(**kwargs):
+            obj_audio = await obj.audios.order_by('?').afirst()
+            return await sync_to_async(lambda: obj_audio.audio)()
+
     @staticmethod
     async def required_role(self, ctx):
         has_role = True
@@ -23,20 +48,33 @@ class Helpers:
 
     @staticmethod
     async def insert_file_db(self, ctx, arg: str, filename: str, hashcode: str):
-        # TODO fix insert file
 
-        import ipdb; ipdb.set_trace()
+        audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
+        server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
 
         if arg is None:
-            audio, created = await sync_to_async(Audio.objects.get_or_create, thread_sensitive=True)(hashcode=hashcode)
-            server, created = await sync_to_async(AudioInServer.objects.get_or_create, thread_sensitive=True)(audio=audio)
+            audio, created = await self.get_or_create_object(AudioInServer,
+                                                             {'audio': audio, 'server': server, 'name': filename})
         else:
-            audio, _ = Audio.objects.get_or_create(hashcode=hashcode)
-            entity, _ = Entity.objects.get_or_create(ctx.message.author.id)
-            server, created = AudioInEntity.objects.get_or_create(audio=audio, entity=entity)
+            discord_id = int(re.findall(r'\b\d+\b', arg)[0])
+            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_id, 'server': server})
+            audio, created = await self.get_or_create_object(AudioInEntity,
+                                                             {'audio': audio, 'entity': entity, 'name': filename})
 
-        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                             f"**{filename}** was added to **{ctx.message.guild.name}**")
+        if created:
+            await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                 f"**{filename}** was added to **{ctx.message.guild.name}**")
+
+            print(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
+                  f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
+
+        else:
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
+                                 f"You already have **{filename}** in **{ctx.message.guild.name} **")
+
+            print(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
+                  f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
+        print(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
 
     @staticmethod
     async def delete_message(msg, time: int):

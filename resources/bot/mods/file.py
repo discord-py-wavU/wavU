@@ -175,9 +175,6 @@ class FileManagement(commands.Cog):
 
         return is_confirmed, is_no
 
-
-
-
     @staticmethod
     def unzip_songs(self, ctx, path, r, zip_name):
 

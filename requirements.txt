@@ -1,4 +1,4 @@
-discord.py
+discord.py==1.7.3
 PyNaCl
 youtube_dl
 requests
@@ -6,11 +6,13 @@ mutagen
 pydub
 environ
 tabulate
+ffmpeg
 
 #django
 django
 django-extensions
 django-environ
+psycopg2
 
 #debbuging/testing
 pytest
