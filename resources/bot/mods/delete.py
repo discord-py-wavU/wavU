@@ -73,7 +73,7 @@ class DeleteCommand(commands.Cog, Helpers):
                                                  10)
 
             except asyncio.TimeoutError:
-                await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 10)
+                await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}", "_List is empty_", 10)
 
