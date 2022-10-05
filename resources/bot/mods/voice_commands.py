@@ -1,19 +1,16 @@
 import asyncio
 import functools
 import logging
-import random
-from os import listdir
-from os.path import isfile, join
 
 import discord
 from discord.ext import commands
 from discord.utils import get
+
 import config
-from resources.audio.models import Audio, AudioInEntity, AudioInServer
-from resources.server.models import Server
-from resources.entity.models import Entity
 from resources.bot.helpers import Helpers
-import re
+from resources.entity.models import Entity
+from resources.server.models import Server
+
 
 class VoiceCommands(commands.Cog, Helpers):
 
@@ -97,20 +94,6 @@ class VoiceCommands(commands.Cog, Helpers):
         await voice.disconnect()
 
     @staticmethod
-    async def search_songs(self, ctx, arg):
-
-        server = await self.get_object(Server, {'discord_id': ctx.message.guild.id})
-
-        if arg is None:
-            audio_name_list, audio_hashcode_list = await self.get_async_audio_list(AudioInServer, {'server': server})
-        else:
-            discord_id = int(re.findall(r'\b\d+\b', arg)[0])
-            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_id, 'server': server})
-            audio_name_list, audio_hashcode_list = await self.get_async_audio_list(AudioInEntity, {'entity': entity})
-
-        return audio_name_list, audio_hashcode_list
-
-    @staticmethod
     async def delete_message(msg):
         await asyncio.sleep(30)
         await msg.delete()
@@ -133,16 +116,13 @@ class VoiceCommands(commands.Cog, Helpers):
 
         loop = self.client.loop or asyncio.get_event_loop()
 
-        audios, hashcodes = await self.search_songs(self, ctx, arg)
+        obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
+
+        print(obj)
 
         if audios:
-            list_songs = ""
-            for index, song in enumerate(audios):
-                list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
-            list_songs = list_songs + "cancel"
-            await self.embed_msg(ctx, f"List .mp3 files:",
-                                 "Choose a number to play a _**.mp3**_ file or _**cancel**_\n"
-                                 f"{list_songs}", 30)
+            msg = f"Choose a number to play a _**.mp3**_ file or _**cancel**_\n"
+            await self.show_audio_list(self, ctx, audios, msg)
 
             def check(m):
                 return (m.content.isdigit() and

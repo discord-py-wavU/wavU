@@ -1,16 +1,18 @@
-import functools
-import os
-from discord.ext import commands
 import asyncio
+import functools
 import hashlib
+import logging
+import os
+
+import discord
 import mutagen
 import requests
-from resources.bot.helpers import Helpers
-import config
-import logging
 import youtube_dl
-import discord
+from discord.ext import commands
 from pydub import AudioSegment
+
+import config
+from resources.bot.helpers import Helpers
 
 
 class AddCommand(commands.Cog, Helpers):
@@ -202,6 +204,7 @@ class AddCommand(commands.Cog, Helpers):
                 loop.create_task(self.delete_message(msg, 30))
                 return
 
+            # TODO fix youtube
             # Member sent a youtube link
             if 'youtube' in msg.content or 'youtu.be' in msg.content:
                 loop.create_task(self.delete_message(msg, 60))
