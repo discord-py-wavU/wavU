@@ -7,11 +7,9 @@ import zipfile
 from datetime import datetime
 from os import stat
 
-import hashlib
 import discord
 import mutagen
 import requests
-import youtube_dl
 from discord.ext import commands
 
 import config
@@ -39,10 +37,6 @@ class FileManagement(commands.Cog):
             os.makedirs(new_path)
 
         return path, valid
-
-
-
-
 
     @staticmethod
     async def file_size(self, ctx, file_title):
@@ -309,26 +303,6 @@ class FileManagement(commands.Cog):
             await ctx.message.delete()
 
     @staticmethod
-    async def get_path(ctx, arg):
-        valid = True
-        all_channel = ctx.message.guild.voice_channels
-        name_channel = [channel.name for channel in all_channel]
-        if arg in [channel.name for channel in all_channel]:
-            s_channel = all_channel[name_channel.index(arg)]
-            path = config.path + "/" + str(ctx.message.guild.id) + "/" + str(s_channel.id)
-        elif ctx.message.mentions:
-            path = config.path + '/' + str(ctx.message.guild.id) + "/" + str(ctx.message.mentions[0].id)
-        elif arg is None:
-            path = config.path + "/" + str(ctx.message.guild.id)
-        else:
-            await ctx.send('No valid argument, please try again.'
-                           '\nType "' + config.prefix + 'help" for more information')
-            valid = False
-            path = None
-
-        return path, valid
-
-    @staticmethod
     def get_list_songs(self, ctx, arg):
 
         guild_id = ctx.message.guild.id
@@ -343,69 +317,6 @@ class FileManagement(commands.Cog):
         songs = list(map(lambda audio: audio["audio_name"], audios))
 
         return songs
-
-    @commands.command(aliases=['Delete', 'del', 'Del', 'remove', 'Remove', 'rm', 'Rm', 'RM'])
-    async def delete(self, ctx, arg=None):
-
-        loop = self.client.loop or asyncio.get_event_loop()
-
-        has_role = await self.required_role(ctx)
-        if not has_role:
-            return
-
-        path, valid = await self.get_path(ctx, arg)
-
-        if not valid:
-            return
-
-        songs = self.get_list_songs(path)
-
-        if songs:
-
-            list_songs = ""
-            for index, song in enumerate(songs):
-                list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
-            list_songs = list_songs + "**all**\n**cancel**"
-            await ctx.send("List .mp3 files:\n" + list_songs, delete_after=30)
-
-            await ctx.send("Choose a _number_ to delete a _**.mp3**_ file", delete_after=30)
-
-            def check(m):
-                return (m.content.isdigit() and
-                        m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
-                       or str(m.content).lower() == "cancel" \
-                       or str(m.content).lower() == "all"
-
-            try:
-                for i in range(3):
-                    msg = await self.client.wait_for('message', check=check, timeout=30)
-                    if msg.content.isdigit() and int(msg.content) <= len(songs) and int(msg.content) != 0:
-                        os.remove(path + '/' + songs[int(msg.content) - 1])
-                        await ctx.send('**' + songs[int(msg.content) - 1] + '** has been _**deleted**_')
-                        break
-                    elif msg.content == "cancel" or msg.content == "Cancel":
-                        await ctx.send("Nothing has been _**deleted**_")
-                        loop.create_task(self.delete_message(msg, 30))
-                        break
-                    elif msg.content == "all" or msg.content == "All":
-                        for index in range(len(songs)):
-                            os.remove(path + '/' + songs[index])
-                        await ctx.send('All the _**.mp3**_ files has been _**deleted**_')
-                        loop.create_task(self.delete_message(msg, 30))
-                        break
-                    elif int(msg.content) > len(songs) or int(msg.content) == 0:
-                        await ctx.send("That number is not an option. Try again **(" + str(i + 1) + "/3)**",
-                                       delete_after=10)
-                        if i == 2:
-                            await ctx.send("None of the attempts were correct, _**delete**_ has been aborted")
-                    loop.create_task(self.delete_message(msg, 10))
-
-            except asyncio.TimeoutError:
-                await ctx.send('Timeout!', delete_after=15)
-                await asyncio.sleep(15)
-                await ctx.message.delete()
-        else:
-            await ctx.send('_List is empty_')
 
     @commands.command(aliases=['Edit'])
     async def edit(self, ctx, arg=None):

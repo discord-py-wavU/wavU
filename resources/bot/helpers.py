@@ -1,13 +1,13 @@
-import logging
-
-import config
-import re
-from resources.audio.models import Audio, AudioInEntity, AudioInServer
-from resources.server.models import Server
-from resources.entity.models import Entity
 import asyncio
+import re
+
 import discord
 from asgiref.sync import sync_to_async
+
+import config
+from resources.audio.models import Audio, AudioInEntity, AudioInServer
+from resources.entity.models import Entity
+from resources.server.models import Server
 
 
 class Helpers:
@@ -32,17 +32,42 @@ class Helpers:
     async def get_async_audio(async_obj, kwargs):
         async for obj in async_obj.objects.filter(**kwargs):
             obj_audio = await obj.audios.order_by('?').afirst()
-            return await sync_to_async(lambda: obj_audio.audio)()
+            return await sync_to_async(lambda: obj_audio.audio, thread_sensitive=True)()
 
     @staticmethod
-    async def get_async_audio_list(async_obj, kwargs):
+    async def get_async_audio_list(self, async_obj, kwargs):
         audio_name_list = []
         audio_hashcode_list = []
-        async for obj in async_obj.objects.filter(**kwargs):
+        objects = await self.filter_object(async_obj, kwargs)
+        async for obj in objects:
             audio_name_list.append(obj.name)
-            hashcode = await sync_to_async(lambda: obj.audio.hashcode)()
+            hashcode = await sync_to_async(lambda: obj.audio.hashcode, thread_sensitive=True)()
             audio_hashcode_list.append(hashcode)
-        return audio_name_list, audio_hashcode_list
+        return objects, audio_name_list, audio_hashcode_list
+
+    @staticmethod
+    async def search_songs(self, ctx, arg):
+
+        server = await self.get_object(Server, {'discord_id': ctx.message.guild.id})
+
+        if arg is None:
+            obj, audio_name_list, audio_hashcode_list = await \
+                self.get_async_audio_list(self, AudioInServer, {'server': server})
+        else:
+            discord_id = int(re.findall(r'\b\d+\b', arg)[0])
+            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_id, 'server': server})
+            obj, audio_name_list, audio_hashcode_list = await \
+                self.get_async_audio_list(self, AudioInEntity, {'entity': entity})
+
+        return obj, audio_name_list, audio_hashcode_list
+
+    @staticmethod
+    async def show_audio_list(self, ctx, audios, msg):
+        list_songs = ""
+        for index, song in enumerate(audios):
+            list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
+        list_songs = list_songs + "cancel"
+        await self.embed_msg(ctx, f"List .mp3 files:", msg + f"{list_songs}", 30)
 
     @staticmethod
     async def required_role(self, ctx):
