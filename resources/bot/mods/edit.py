@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from asgiref.sync import sync_to_async
 
@@ -28,7 +27,7 @@ class EditCommand(commands.Cog, Helpers):
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
 
         if audios:
-            msg = "Choose a _number_ to edit a _**.mp3**_ file _name_"
+            msg = "Choose a _number_ to edit a _**.mp3**_ file _name_\n"
 
             await self.show_audio_list(self, ctx, audios, msg)
 
@@ -73,6 +72,10 @@ class EditCommand(commands.Cog, Helpers):
                             await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
                                                  "None of the attempts were correct, _**edit**_ has been aborted",
                                                  10)
+                    else:
+                        await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
+                                             "That is not a number, try again", 10)
+
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
         else:
