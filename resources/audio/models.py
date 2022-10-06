@@ -14,6 +14,7 @@ class AudioInEntity(models.Model):
     audio = models.ForeignKey(Audio, on_delete=models.CASCADE, related_name="entities")
     entity = models.ForeignKey(Entity, on_delete=models.CASCADE, related_name="audios")
     enabled = models.BooleanField(default=True)
+    volume = models.IntegerField(default=50, blank=False, null=False,)
     name = models.CharField(default="", max_length=20, db_index=True)
 
 
@@ -21,4 +22,5 @@ class AudioInServer(models.Model):
     audio = models.ForeignKey(Audio, on_delete=models.CASCADE, related_name="servers")
     server = models.ForeignKey(Server, on_delete=models.CASCADE, related_name="audios")
     enabled = models.BooleanField(default=True)
+    volume = models.IntegerField(default=50, blank=False, null=False,)
     name = models.CharField(default="", max_length=20, db_index=True)

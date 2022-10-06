@@ -22,17 +22,24 @@ class Helpers:
 
     @staticmethod
     async def get_object(obj, kwargs):
-        return await sync_to_async(obj.objects.get, thread_sensitive=True)(**kwargs)
+        try:
+            obj_getted = await sync_to_async(obj.objects.get, thread_sensitive=True)(**kwargs)
+        except Exception as e:
+            print(e)
+            obj_getted = None
+        return obj_getted
 
     @staticmethod
     async def get_random_object(obj):
         return await sync_to_async(obj.objects.order_by('?').first(), thread_sensitive=True)()
 
     @staticmethod
-    async def get_async_audio(async_obj, kwargs):
-        async for obj in async_obj.objects.filter(**kwargs):
-            obj_audio = await obj.audios.order_by('?').afirst()
-            return await sync_to_async(lambda: obj_audio.audio, thread_sensitive=True)()
+    async def get_async_audio(self, async_obj, kwargs):
+        objects = await self.get_object(async_obj, kwargs)
+        if objects:
+            obj_audio = await objects.audios.order_by('?').afirst()
+            return await sync_to_async(lambda: obj_audio.audio, thread_sensitive=True)(), objects
+        return None, None
 
     @staticmethod
     async def get_async_audio_list(self, async_obj, kwargs):

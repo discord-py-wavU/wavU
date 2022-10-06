@@ -3,10 +3,12 @@ import functools
 import logging
 
 import discord
+from asgiref.sync import sync_to_async
 from discord.ext import commands
 from discord.utils import get
 
 import config
+from resources.audio.models import AudioInServer, AudioInEntity
 from resources.bot.helpers import Helpers
 from resources.entity.models import Entity
 from resources.server.models import Server
@@ -41,19 +43,27 @@ class VoiceCommands(commands.Cog, Helpers):
                 not member.bot:
 
             # Check first personal audios
-            audio = await self.get_async_audio(Entity, {"discord_id": member.id,
-                                                        'audios__enabled': True,
-                                                        'server__discord_id': member.guild.id})
+            audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.id,
+                                                                   'audios__enabled': True,
+                                                                   'server__discord_id': member.guild.id})
 
             # Second check channel audios
             if not audio:
-                audio = await self.get_async_audio(Entity, {"discord_id": member.voice.channel.id,
-                                                            'audios__enabled': True,
-                                                            'server__discord_id': member.guild.id})
+                audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.voice.channel.id,
+                                                                       'audios__enabled': True,
+                                                                       'server__discord_id': member.guild.id})
+
+            query_obj = AudioInEntity
 
             # Third check server audios
             if not audio:
-                audio = await self.get_async_audio(Server, {"discord_id": member.guild.id, 'enabled': True})
+                audio, obj = await self.get_async_audio(self, Server, {"discord_id": member.guild.id, 'enabled': True})
+                query_obj = AudioInServer
+
+            obj_audio = None
+
+            if audio:
+                obj_audio = await self.get_object(query_obj, {'audio__hashcode': audio.hashcode})
 
             path = f"{config.path}/{audio.hashcode}.mp3"
 
@@ -61,24 +71,27 @@ class VoiceCommands(commands.Cog, Helpers):
                 voice = get(self.client.voice_clients, guild=member.guild)
                 voice = await self.connect(voice, after)
                 if str(member.guild.id) not in self.queue:
-                    await self.start_playing(self, voice, member, path)
+                    await self.start_playing(self, voice, member, path, obj_audio)
                 else:
-                    self.queue[str(member.guild.id)].append(path)
+                    self.queue[str(member.guild.id)].append((path, obj_audio))
         elif after.channel is None and len(before.channel.members) == 1:
             voice = get(self.client.voice_clients, guild=member.guild)
             if voice and voice.is_connected():
                 await voice.disconnect()
 
     @staticmethod
-    async def start_playing(self, voice, member, path_to_play):
+    async def start_playing(self, voice, member, path_to_play, obj_audio):
         loop = self.client.loop or asyncio.get_event_loop()
-        self.queue[str(member.guild.id)] = [path_to_play]
+        self.queue[str(member.guild.id)] = [(path_to_play, obj_audio)]
 
         i = 0
         avoid = 0
         while i < len(self.queue[str(member.guild.id)]) and avoid < 3:
             try:
-                partial = functools.partial(voice.play, discord.FFmpegPCMAudio(self.queue[str(member.guild.id)][i]))
+                volume = int(self.queue[str(member.guild.id)][i][1].volume) / 100
+                audio = self.queue[str(member.guild.id)][i][0]
+                partial = functools.partial(voice.play,
+                                            discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audio), volume=volume))
                 await loop.run_in_executor(None, partial)
                 while voice.is_playing():
                     await asyncio.sleep(1)
@@ -93,19 +106,6 @@ class VoiceCommands(commands.Cog, Helpers):
         await asyncio.sleep(1)
         await voice.disconnect()
 
-    @staticmethod
-    async def delete_message(msg):
-        await asyncio.sleep(30)
-        await msg.delete()
-
-    @staticmethod
-    async def embed_msg(ctx, name, value, delete=None):
-        embed = discord.Embed(color=0xFC65E1)
-        embed.add_field(name=name,
-                        value=value,
-                        inline=False)
-        await ctx.send(embed=embed, delete_after=delete)
-
     @commands.command(aliases=['Choose', 'ch', 'c', 'Ch', 'C'])
     async def choose(self, ctx, arg=None):
 
@@ -118,7 +118,7 @@ class VoiceCommands(commands.Cog, Helpers):
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
 
-        print(obj)
+        volume_obj = await obj.afirst()
 
         if audios:
             msg = f"Choose a number to play a _**.mp3**_ file or _**cancel**_\n"
@@ -141,7 +141,7 @@ class VoiceCommands(commands.Cog, Helpers):
                             if str(ctx.guild.id) not in self.queue:
                                 channel = ctx.author.voice.channel
                                 voice = await channel.connect()
-                                await self.start_playing(self, voice, ctx.author, audio_to_play)
+                                await self.start_playing(self, voice, ctx.author, audio_to_play, volume_obj)
                             else:
                                 self.queue[str(ctx.guild.id)].append(audio_to_play)
                         except discord.ClientException as e:
