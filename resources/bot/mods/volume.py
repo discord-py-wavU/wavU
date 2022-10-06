@@ -84,11 +84,12 @@ class VolumeCommand(commands.Cog, Helpers):
             await self.show_audio_list(self, ctx, audios, msg)
 
             def check_number(m):
-                return (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
-                       or str(m.content).lower() == "cancel"
+                return (m.content.isdigit() and
+                        m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
+                       or str(m.content).lower() == "cancel" \
+                       or str(m.content).lower() == "all"
 
             try:
-
                 for i in range(3):
                     msg_number = await self.client.wait_for('message', check=check_number, timeout=60)
                     if msg_number.content.isdigit() and int(msg_number.content) <= len(audios) \
@@ -109,9 +110,6 @@ class VolumeCommand(commands.Cog, Helpers):
                             await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
                                                  "None of the attempts were correct, _**volume**_ has been aborted",
                                                  10)
-                    else:
-                        await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
-                                             "That is not a number, try again", 10)
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
         else:

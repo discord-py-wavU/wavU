@@ -72,9 +72,6 @@ class EditCommand(commands.Cog, Helpers):
                             await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
                                                  "None of the attempts were correct, _**edit**_ has been aborted",
                                                  10)
-                    else:
-                        await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
-                                             "That is not a number, try again", 10)
 
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
