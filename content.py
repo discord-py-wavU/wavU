@@ -10,7 +10,7 @@ emoji = "<:WavU:813997355975835669>"
 
 title = f"{emoji} Hello everyone! My name is {bot_name} " \
         f"\nand i'm here to help you!"
-description = "This is **all** the commands you can use\n\n" \
+description = "These are **all** the commands you can use\n\n" \
               "**Commands**"
 
 field_title_add = f"`{pre}add` `{pre}a`"
