@@ -184,7 +184,7 @@ class AddCommand(commands.Cog, Helpers):
         return is_confirmed, is_no
 
     @staticmethod
-    async def link_file(self, ctx, arg, file_title, file_duration, loop):
+    async def link_file(self, ctx, arg, file_title, file_duration):
 
         isvalid = await self.file_size(self, ctx, file_title)
         if not isvalid:
@@ -221,8 +221,6 @@ class AddCommand(commands.Cog, Helpers):
                 continue
             # elif os.path.exists(f"{hashcode}.mp3"):
 
-            loop.create_task(self.delete_message(msg_name, 60))
-
             if str(msg_name.content).lower() == "cancel":
                 await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                      "Nothing has been **added**", 30)
@@ -251,8 +249,6 @@ class AddCommand(commands.Cog, Helpers):
                        or (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
 
             msg_time = await self.client.wait_for('message', check=check, timeout=600)
-
-            loop.create_task(self.delete_message(msg_time, 60))
 
             if str(msg_time.content).lower() == "cancel":
                 await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
@@ -285,8 +281,6 @@ class AddCommand(commands.Cog, Helpers):
 
                     msg_confirm = await self.client.wait_for('message', check=check, timeout=600)
 
-                    loop.create_task(self.delete_message(msg_confirm, 60))
-
                     is_confirmed, is_no = await self.confirm_file(self, ctx, arg, msg_confirm, msg_name)
 
                     if is_confirmed or is_no:
@@ -303,16 +297,26 @@ class AddCommand(commands.Cog, Helpers):
                                      60)
 
     @commands.command(aliases=['a', 'Add'])
-    async def add(self, ctx, arg: str = None):
+    async def add(self, ctx, arg: str = None, arg2: str = None):
 
         # Discord async loop
         loop = self.client.loop or asyncio.get_event_loop()
 
         # Check if member has required role
-        has_role = await self.required_role(self, ctx)
-
-        if not has_role:
+        if not await self.required_role(self, ctx):
             return
+
+        # Add command doesn't use two arguments
+        if arg2:
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 f"This format is wrong, please use **{config.prefix}help**", 30)
+            return
+
+        discord_id = None
+        if arg:
+            valid, discord_id = await self.valid_entity(self, ctx, arg)
+            if not valid:
+                return
 
         # Embed message to member
         await self.embed_msg(ctx, f"Hi {ctx.message.author.name}! Glad to see you :heart_eyes:",
@@ -332,14 +336,11 @@ class AddCommand(commands.Cog, Helpers):
             if str(msg.content).lower() == "cancel":
                 await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                      "Nothing has been **added**", 30)
-                loop.create_task(self.delete_message(msg, 30))
                 return
 
             # TODO fix youtube
             # Member sent a youtube link
             if 'youtube' in msg.content or 'youtu.be' in msg.content:
-                loop.create_task(self.delete_message(msg, 60))
-
                 await self.embed_msg(ctx, f"Processing file... :gear: :tools:",
                                      "Please wait a few seconds :hourglass:", 60)
 
@@ -349,7 +350,7 @@ class AddCommand(commands.Cog, Helpers):
                 if file_title is None or file_duration is None:
                     return
 
-                await self.link_file(ctx, arg, file_title, file_duration, loop)
+                await self.link_file(self, ctx, arg, file_title, file_duration)
 
                 return
 
@@ -372,7 +373,7 @@ class AddCommand(commands.Cog, Helpers):
                 hashcode = hashlib.md5(open(path, 'rb').read()).hexdigest()
 
                 if int(audio.info.length) < 10:
-                    await self.insert_file_db(self, ctx, arg, filename, hashcode)
+                    await self.insert_file_db(self, ctx, arg, filename, hashcode, discord_id)
                     os.rename(path, f"{config.path}/{hashcode}.mp3")
                 else:
                     await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
@@ -381,12 +382,9 @@ class AddCommand(commands.Cog, Helpers):
             else:
                 await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                      f"This is not a **.mp3** file, **wavU** could not add it", 30)
-            loop.create_task(self.delete_message(msg, 30))
 
         except asyncio.TimeoutError:
-            await ctx.send('Timeout!', delete_after=15)
-            await asyncio.sleep(15)
-            await ctx.message.delete()
+            await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
 
 
 def setup(client):
