@@ -62,7 +62,7 @@ class VoiceCommands(commands.Cog, Helpers):
             obj_audio = None
 
             if audio:
-                obj_audio = await self.get_object(query_obj, {'audio__hashcode': audio.hashcode})
+                obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode})
 
             path = f"{config.path}/{audio.hashcode}.mp3"
 
@@ -114,6 +114,10 @@ class VoiceCommands(commands.Cog, Helpers):
             return
 
         loop = self.client.loop or asyncio.get_event_loop()
+
+        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
+        if not valid:
+            return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
 

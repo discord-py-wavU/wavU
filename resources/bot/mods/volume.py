@@ -74,6 +74,10 @@ class VolumeCommand(commands.Cog, Helpers):
         if not has_role:
             return
 
+        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
+        if not valid:
+            return
+
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
 
         if audios:
