@@ -7,7 +7,7 @@ from django.utils import timezone
 
 class Audio(models.Model):
     hashcode = models.CharField(blank=False, null=False, max_length=30, db_index=True)
-    created_at = models.DateField(blank=False, null=False, default=timezone.now())
+    created_at = models.DateField(blank=False, null=False, default=timezone.now)
 
 
 class AudioInEntity(models.Model):
