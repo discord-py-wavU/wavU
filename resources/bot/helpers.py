@@ -21,9 +21,10 @@ class Helpers:
         return await sync_to_async(obj.objects.filter, thread_sensitive=True)(**kwargs)
 
     @staticmethod
-    async def get_object(obj, kwargs):
+    async def get_object(self, obj, kwargs):
         try:
-            gotten_obj = await sync_to_async(obj.objects.get, thread_sensitive=True)(**kwargs)
+            objects = await self.filter_object(obj, kwargs)
+            gotten_obj = await sync_to_async(lambda: objects.distinct().first(), thread_sensitive=True)()
         except Exception as e:
             print(e)
             gotten_obj = None
@@ -56,7 +57,7 @@ class Helpers:
     @staticmethod
     async def search_songs(self, ctx, arg):
 
-        server = await self.get_object(Server, {'discord_id': ctx.message.guild.id})
+        server = await self.get_object(self, Server, {'discord_id': ctx.message.guild.id})
         is_server = False
         discord_id = 0
 
@@ -100,34 +101,6 @@ class Helpers:
             has_role = False
 
         return has_role
-
-    @staticmethod
-    async def get_discord_tag(self, ctx, src, dest=None, server_obj=None):
-        discord_id = src
-        if not server_obj:
-            server_obj = ctx.guild.id
-        elif server_obj.isdigit():
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 'No valid argument, please try again.\n'
-                                 "If your channel's name has spaces you need to use quotes\n"
-                                 'ex.: "Channel with spaces"'
-                                 f'\nType **{config.prefix}help** for more information', 30)
-            return None
-
-        mention = ctx.message.mentions
-        if mention:
-            discord_id = mention[0].id
-        valid = ctx.guild.get_member(discord_id)
-        if not valid:
-            guilds = self.client.get_guild(server_obj)
-            if guilds:
-                voice_channels = guilds.voice_channels
-                if src not in [voice_channel.name for voice_channel in voice_channels]:
-                    discord_id = None
-            else:
-                discord_id = None
-
-        return discord_id
 
     @staticmethod
     async def get_mentions(mentions):
@@ -181,6 +154,8 @@ class Helpers:
                 channel = guild.get_channel(int(arg))
                 if channel:
                     discord_id = channel.id
+                else:
+                    discord_id = None
             else:
                 discord_id = voice_channels[name_channels_list.index(arg)].id
             if not discord_id:
@@ -192,22 +167,31 @@ class Helpers:
 
     @staticmethod
     async def valid_arg(self, ctx, arg, server_id=None):
-        name_channels_list = []
-        discord_id = None
-        valid, discord_id, obj_type = await self.valid_person(self, ctx, arg, discord_id)
 
-        if not valid and arg.isdigit():
-            valid = self.client.get_guild(int(arg))
+        if arg:
+            name_channels_list = []
+            discord_id = None
+            valid, discord_id, obj_type = await self.valid_person(self, ctx, arg, discord_id)
+
+            if not valid and arg.isdigit():
+                valid = self.client.get_guild(int(arg))
+                if valid:
+                    discord_id = valid.id
+                    obj_type = "Server"
+
+            if not valid:
+                valid, discord_id = await self.valid_channel(self, ctx, arg, server_id, discord_id)
+                if valid:
+                    obj_type = "Channel"
+            if str(discord_id) not in arg and name_channels_list and arg not in name_channels_list:
+                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                     f"This format is wrong, please use **{config.prefix}help**", 30)
+                valid = False
+                obj_type = ""
+        else:
+            valid = True
+            discord_id = ctx.message.guild.id
             obj_type = "Server"
-
-        if not valid:
-            valid, discord_id = await self.valid_channel(self, ctx, arg, server_id, discord_id)
-            obj_type = "Channel"
-        if str(discord_id) not in arg and name_channels_list and arg not in name_channels_list:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 f"This format is wrong, please use **{config.prefix}help**", 30)
-            valid = False
-            obj_type = "None"
 
         return valid, discord_id, obj_type
 

@@ -17,15 +17,15 @@ class CopyCommand(commands.Cog, Helpers):
     @staticmethod
     async def move_file(self, ctx, audio_name, hashcode, discord_id_dest, server_id, obj_type_dest):
         created = False
-        server = await self.get_object(Server, {'discord_id': server_id})
+        server = await self.get_object(self, Server, {'discord_id': server_id})
 
         if server:
-            audio = await self.get_object(Audio, {'hashcode': hashcode})
+            audio = await self.get_object(self, Audio, {'hashcode': hashcode})
             if obj_type_dest == "Server":
                 audio, created = await self.get_or_create_object(
                     AudioInServer, {'audio': audio, 'server': server}, {'name': audio_name})
             elif obj_type_dest == "Channel" or obj_type_dest == "Member":
-                entity = await self.get_object(Entity, {'discord_id': discord_id_dest, 'server': server})
+                entity = await self.get_object(self, Entity, {'discord_id': discord_id_dest, 'server': server})
                 audio, created = await self.get_or_create_object(
                     AudioInEntity, {'audio': audio, 'entity': entity}, {'name': audio_name})
 
