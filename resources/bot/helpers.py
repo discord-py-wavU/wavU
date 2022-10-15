@@ -236,7 +236,7 @@ class Helpers:
         return True, discord_id
 
     @staticmethod
-    async def insert_file_db(self, ctx, arg: str, filename: str, hashcode: str, discord_tag):
+    async def insert_file_db(self, ctx, arg: str, filename: str, hashcode: str, discord_id):
 
         audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
         server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
@@ -245,7 +245,7 @@ class Helpers:
             audio, created = await self.get_or_create_object(AudioInServer,
                                                              {'audio': audio, 'server': server}, {'name': filename})
         else:
-            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_tag, 'server': server})
+            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_id, 'server': server})
             audio, created = await self.get_or_create_object(AudioInEntity,
                                                              {'audio': audio, 'entity': entity}, {'name': filename})
 

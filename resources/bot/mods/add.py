@@ -3,6 +3,7 @@ import functools
 import hashlib
 import logging
 import os
+from os import stat
 
 import discord
 import mutagen
@@ -90,36 +91,15 @@ class AddCommand(commands.Cog, Helpers):
         max_file_size = 8 * 1024 * 1024
         isvalid = True
 
-        path = f"{config.path}/{ctx.message.guild.id}"
-
-        file_path = f"{path}/{file_title}.mp3"
+        path = f"{config.path}/{str(file_title)}.mp3"
 
         if max_file_size < stat(path).st_size:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  "This size of the audio is too large, **wavU** could not add it", 30)
-            os.remove(file_path)
+            os.remove(path)
             isvalid = False
 
         return isvalid
-
-    @staticmethod
-    async def choose_file_name(self, ctx, file_title, msg_name):
-
-        name_valid = False
-
-        if not os.path.exists(f"{config.path}/{msg_name.content}.mp3"):
-            try:
-                os.rename(f"{config.path}/{str(file_title)}.mp3",
-                          f"{config.path}/{msg_name.content}.mp3")
-            except Exception as e:
-                logging.info(e)
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     "Invalid name, please try a different name", 60)
-            name_valid = True
-        else:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 "This file already exists, please try a different name", 60)
-        return name_valid
 
     @staticmethod
     async def get_file_info(self, ctx, url):
@@ -154,25 +134,25 @@ class AddCommand(commands.Cog, Helpers):
             return None, None
 
     @staticmethod
-    async def confirm_file(self, ctx, arg, msg_confirm, msg_name):
+    async def confirm_file(self, ctx, arg, msg_confirm, hashcode, msg_name, discord_id):
 
         is_confirmed = False
         is_no = False
 
         if str(msg_confirm.content).lower() == "cancel":
-            os.remove(f"{config.path}/{msg_name.content}.mp3")
-            os.remove(f"{config.path}/{msg_name.content}_trim.mp3")
+            os.remove(f"{config.path}/{hashcode}.mp3")
+            os.remove(f"{config.path}/{hashcode}_trim.mp3")
             await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                  "Nothing has been **added**", 30)
 
         elif str(msg_confirm.content).lower() in "yes":
-            os.remove(f"{config.path}/{msg_name.content}.mp3")
-            os.rename(f"{config.path}/{msg_name.content}_trim.mp3",
-                      f"{config.path}/{msg_name.content}.mp3")
-            await self.insert_file_db(self, ctx, arg, f"{msg_name.content}.mp3")
+            os.remove(f"{config.path}/{hashcode}.mp3")
+            os.rename(f"{config.path}/{hashcode}_trim.mp3",
+                      f"{config.path}/{hashcode}.mp3")
+            await self.insert_file_db(self, ctx, arg, msg_name.content, hashcode, discord_id)
             is_confirmed = True
         elif str(msg_confirm.content).lower() in "no":
-            os.remove(f"{config.path}/{msg_name.content}_trim.mp3")
+            os.remove(f"{config.path}/{hashcode}_trim.mp3")
             await self.embed_msg(ctx, f"Let's try again {ctx.message.author.name}",
                                  "I need the audio segment to cut your audio\n"
                                  "Format: (**MM:SS:MS** to **MM:SS:MS**)\n"
@@ -184,7 +164,7 @@ class AddCommand(commands.Cog, Helpers):
         return is_confirmed, is_no
 
     @staticmethod
-    async def link_file(self, ctx, arg, file_title, file_duration):
+    async def link_file(self, ctx, arg, file_title, file_duration, discord_id):
 
         isvalid = await self.file_size(self, ctx, file_title)
         if not isvalid:
@@ -201,40 +181,26 @@ class AddCommand(commands.Cog, Helpers):
             # Waiting for file name
             msg_name = await self.client.wait_for('message', check=check, timeout=600)
 
-            # Check if name exists on this guild
-            q = {"_id": ctx.message.guild.id, "audios.name": {"$in": msg_name.content}}
-            file_server_exists = self.servers_collection.find_one(q)
-
-            # Check if name exists on some member or channel of this guild
-            q = {"_id": f"{ctx.message.guild.id}/{ctx.message.author.id}",
-                 "audios.name": {"$in": msg_name.content}}
-            file_member_exists = self.entities_collection.find_one(q)
-
-            hashcode = hashlib.md5(open(f"{config.path}/{msg_name.content}.mp3", 'rb').read()).hexdigest()
-
-            if file_server_exists or file_member_exists:
-                await ctx.send(file=discord.File(fp=f"{config.path}/{msg_name.content}.mp3",
-                                                 filename=f"{msg_name.content}.mp3"), delete_after=60)
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     "This name already exists, try again",
-                                     60)
-                continue
-            # elif os.path.exists(f"{hashcode}.mp3"):
-
             if str(msg_name.content).lower() == "cancel":
                 await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                      "Nothing has been **added**", 30)
-                os.remove(f"{config.path}/{file_title}.mp3")
+                os.remove(f"{config.path}/{str(file_title)}.mp3")
                 return
 
-            name_valid = await self.choose_file_name(self, ctx, file_title, msg_name)
+            if os.path.exists(f"{config.path}/{str(file_title)}.mp3"):
+                os.rename(f"{config.path}/{str(file_title)}.mp3",
+                          f"{config.path}/{msg_name.content}.mp3")
 
-            if name_valid:
-                break
+            hashcode = hashlib.md5(open(f"{config.path}/{msg_name.content}.mp3", 'rb').read()).hexdigest()
+
+            os.rename(f"{config.path}/{msg_name.content}.mp3",
+                      f"{config.path}/{hashcode}.mp3")
+
+            break
 
         await self.embed_msg(ctx, f"I'm working on your file",
                              "Please wait a few seconds", 60)
-        await ctx.send(file=discord.File(fp=f"{config.path}/{msg_name.content}.mp3",
+        await ctx.send(file=discord.File(fp=f"{config.path}/{hashcode}.mp3",
                                          filename=f"{msg_name.content}.mp3"), delete_after=60)
         await self.embed_msg(ctx, f"Let's do this {ctx.message.author.name}",
                              "I need the audio segment to cut your audio\n"
@@ -253,7 +219,7 @@ class AddCommand(commands.Cog, Helpers):
             if str(msg_time.content).lower() == "cancel":
                 await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                      "Nothing has been **added**", 30)
-                os.remove(config.path + '/' + msg_name.content + '.mp3')
+                os.remove(f"{config.path}/{hashcode}.mp3")
                 break
 
             begin_times, end_times, is_valid_format = await self.valid_format(self, ctx, msg_time, file_duration)
@@ -264,11 +230,11 @@ class AddCommand(commands.Cog, Helpers):
             if 0 <= end_times - begin_times <= 10:
                 await self.embed_msg(ctx, f"I'm working on your file",
                                      "Please wait a few seconds", 60)
-                file = AudioSegment.from_file(f"{config.path}/{msg_name.content}.mp3")
+                file = AudioSegment.from_file(f"{config.path}/{hashcode}.mp3")
                 file_trim = file[begin_times * 1000:end_times * 1000]
-                file_trim.export(f"{config.path}/{msg_name.content}_trim.mp3", format="mp3")
+                file_trim.export(f"{config.path}/{hashcode}_trim.mp3", format="mp3")
 
-                await ctx.send(file=discord.File(fp=f"{config.path}/{msg_name.content}_trim.mp3",
+                await ctx.send(file=discord.File(fp=f"{config.path}/{hashcode}_trim.mp3",
                                                  filename=f"{msg_name.content}_trim.mp3"), delete_after=60)
                 await self.embed_msg(ctx, f"Would you like to keep this file?",
                                      "Type **yes** to keep it or **no** to cut it again, or **cancel**", 60)
@@ -277,11 +243,12 @@ class AddCommand(commands.Cog, Helpers):
                         return str(m.content).lower() == "cancel" \
                                or str(m.content).lower() in "yes" \
                                or str(m.content).lower() in "no" \
-                               or (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
+                               and (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
 
                     msg_confirm = await self.client.wait_for('message', check=check, timeout=600)
 
-                    is_confirmed, is_no = await self.confirm_file(self, ctx, arg, msg_confirm, msg_name)
+                    is_confirmed, is_no = \
+                        await self.confirm_file(self, ctx, arg, msg_confirm, hashcode, msg_name, discord_id)
 
                     if is_confirmed or is_no:
                         break
@@ -314,7 +281,7 @@ class AddCommand(commands.Cog, Helpers):
 
         discord_id = None
         if arg:
-            valid, discord_id = await self.valid_entity(self, ctx, arg)
+            valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
             if not valid:
                 return
 
@@ -338,7 +305,6 @@ class AddCommand(commands.Cog, Helpers):
                                      "Nothing has been **added**", 30)
                 return
 
-            # TODO fix youtube
             # Member sent a youtube link
             if 'youtube' in msg.content or 'youtu.be' in msg.content:
                 await self.embed_msg(ctx, f"Processing file... :gear: :tools:",
@@ -350,7 +316,7 @@ class AddCommand(commands.Cog, Helpers):
                 if file_title is None or file_duration is None:
                     return
 
-                await self.link_file(self, ctx, arg, file_title, file_duration)
+                await self.link_file(self, ctx, arg, file_title, file_duration, discord_id)
 
                 return
 
