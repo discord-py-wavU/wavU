@@ -1,10 +1,9 @@
 import asyncio
 
 from asgiref.sync import sync_to_async
-
-import config
-from resources.bot.helpers import Helpers
 from discord.ext import commands
+
+from resources.bot.helpers import Helpers
 
 
 class EditCommand(commands.Cog, Helpers):
@@ -59,7 +58,7 @@ class EditCommand(commands.Cog, Helpers):
                             name = msg_edit.content
                             await self.edit_obj_and_file(obj, hashcode, name)
                             await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                                 f'** has been edited to ** {msg_edit.content}.mp3**', 30)
+                                                 f'has been edited to **{msg_edit.content}.mp3**', 30)
                         break
                     elif str(msg.content).lower() == "cancel":
                         await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",

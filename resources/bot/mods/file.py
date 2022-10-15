@@ -1,11 +1,9 @@
 import asyncio
 import datetime
 import functools
-import logging
 import os
 import zipfile
 from datetime import datetime
-from os import stat
 
 import discord
 import mutagen
@@ -19,8 +17,6 @@ class FileManagement(commands.Cog):
 
     def __init__(self, client):
         self.client = client
-
-
 
     @staticmethod
     def unzip_songs(self, ctx, path, r, zip_name):
@@ -185,28 +181,6 @@ class FileManagement(commands.Cog):
 
         return file_path
 
-
-
-    @commands.command(name='list', aliases=['show', 'List', 'Show'])
-    async def show_list(self, ctx, arg=None):
-
-        path, valid = await self.get_path(ctx, arg)
-
-        if not valid:
-            return
-
-        songs = self.get_list_songs(self, ctx, arg)
-
-        if songs:
-            list_songs = ""
-            for index, song in enumerate(songs):
-                list_songs = list_songs + str(index + 1) + ". " + song.split(".mp3")[0] + "\n"
-            await self.embed_msg(ctx, f"List .mp3 files:",
-                                 list_songs, 60)
-        else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 "List is empty", 30)
-
     @staticmethod
     def zipping(self, ctx, arg, filename, path):
         file_zip = zipfile.ZipFile(f"audio/{filename}.zip", 'w', zipfile.ZIP_DEFLATED)
@@ -263,9 +237,6 @@ class FileManagement(commands.Cog):
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  "There's no file to add to **zip**")
-
-
-
 
 
 '''

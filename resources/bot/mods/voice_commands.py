@@ -3,7 +3,6 @@ import functools
 import logging
 
 import discord
-from asgiref.sync import sync_to_async
 from discord.ext import commands
 from discord.utils import get
 

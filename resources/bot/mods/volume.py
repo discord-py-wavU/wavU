@@ -3,7 +3,6 @@ import asyncio
 from asgiref.sync import sync_to_async
 from discord.ext import commands
 
-import config
 from resources.bot.helpers import Helpers
 
 

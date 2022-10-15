@@ -1,7 +1,7 @@
 import asyncio
-from asgiref.sync import sync_to_async
+
 from discord.ext import commands
-import discord
+
 import config
 from resources.audio.models import Audio, AudioInServer, AudioInEntity
 from resources.bot.helpers import Helpers
@@ -121,7 +121,8 @@ class CopyCommand(commands.Cog, Helpers):
                     if msg.content.isdigit() and int(msg.content) <= len(audios) and int(msg.content) != 0:
                         audio = audios[int(msg.content) - 1]
                         hashcode = hashcodes[int(msg.content) - 1]
-                        valid = await self.move_file(self, ctx, audio, hashcode, discord_id_dest, server_id, obj_type_dest)
+                        valid = await self.move_file(self, ctx, audio, hashcode, discord_id_dest, server_id,
+                                                     obj_type_dest)
                         if valid:
                             await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                                  f'**{audios[int(msg.content) - 1]}** has been _**moved**_', 30)
