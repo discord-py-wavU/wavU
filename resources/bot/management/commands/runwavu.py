@@ -1,14 +1,13 @@
-import asyncio
+import glob
+import logging
 from os.path import join, dirname, isfile, basename
 
-from django.core.management.base import BaseCommand
-import os
 import discord.utils
 from discord.ext import commands
-import glob
+from django.core.management.base import BaseCommand
+
 import config
 import content
-import logging
 
 intents = discord.Intents.all()
 intents.members = True
@@ -75,4 +74,3 @@ class Command(BaseCommand):
         print("Modules loaded")
 
         client.run(config.token)
-

@@ -10,9 +10,8 @@ import discord
 import discord.utils
 from discord.ext import commands
 
+import config
 import content
-from resources.bot.mods import db
-
 
 class Management(commands.Cog):
 

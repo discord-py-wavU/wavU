@@ -279,11 +279,10 @@ class AddCommand(commands.Cog, Helpers):
                                  f"This format is wrong, please use **{config.prefix}help**", 30)
             return
 
-        discord_id = None
-        if arg:
-            valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
-            if not valid:
-                return
+        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
+
+        if not valid:
+            return
 
         # Embed message to member
         await self.embed_msg(ctx, f"Hi {ctx.message.author.name}! Glad to see you :heart_eyes:",
