@@ -7,3 +7,4 @@ database.db
 service/db.sqlite3
 *.sqlite3
 config.py
+*.mp3
