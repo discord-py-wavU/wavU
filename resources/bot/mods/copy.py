@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
+
 import asyncio
 
+from asgiref.sync import sync_to_async
 from discord.ext import commands
 
 import config
@@ -15,7 +18,7 @@ class CopyCommand(commands.Cog, Helpers):
         self.client = client
 
     @staticmethod
-    async def move_file(self, ctx, audio_name, hashcode, discord_id_dest, server_id, obj_type_dest):
+    async def copy_file(self, ctx, audio_name, hashcode, discord_id_dest, server_id, obj_type_dest):
         created = False
         server = await self.get_object(self, Server, {'discord_id': server_id})
 
@@ -121,7 +124,7 @@ class CopyCommand(commands.Cog, Helpers):
                     if msg.content.isdigit() and int(msg.content) <= len(audios) and int(msg.content) != 0:
                         audio = audios[int(msg.content) - 1]
                         hashcode = hashcodes[int(msg.content) - 1]
-                        valid = await self.move_file(self, ctx, audio, hashcode, discord_id_dest, server_id,
+                        valid = await self.copy_file(self, ctx, audio, hashcode, discord_id_dest, server_id,
                                                      obj_type_dest)
                         if valid:
                             await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",

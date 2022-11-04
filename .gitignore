@@ -2,7 +2,7 @@ enviroments/settings_local.py
 .idea
 __pycache__
 venv
-/audio
+\audio
 database.db
 service/db.sqlite3
 *.sqlite3
