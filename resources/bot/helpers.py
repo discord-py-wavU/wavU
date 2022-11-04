@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import asyncio
 import re
 
@@ -167,7 +169,6 @@ class Helpers:
 
     @staticmethod
     async def valid_arg(self, ctx, arg, server_id=None):
-
         if arg:
             name_channels_list = []
             discord_id = None

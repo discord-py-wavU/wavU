@@ -1,7 +1,7 @@
-import asyncio
+# -*- coding: utf-8 -*-
 
-from asgiref.sync import sync_to_async
 from discord.ext import commands
+
 from resources.bot.helpers import Helpers
 
 

@@ -8,9 +8,15 @@ https://docs.djangoproject.com/en/4.1/howto/deployment/wsgi/
 """
 
 import os
-
+import sys
+import django
+import config
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wavu.settings')
+path = "/mnt/c/Users/facub/Documents/GitHub/wavU"
+if path not in sys.path:
+    sys.path.insert(0, path)
 
+os.environ["DJANGO_SETTINGS_MODULE"] = 'service.settings.production'
+django.setup()
 application = get_wsgi_application()

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import glob
 import logging
 from os.path import join, dirname, isfile, basename
@@ -12,7 +14,6 @@ import content
 intents = discord.Intents.all()
 intents.members = True
 client = commands.Bot(command_prefix=config.prefix, help_command=None, intents=intents)
-
 
 @client.command(aliases=['Help'])
 async def help(ctx):

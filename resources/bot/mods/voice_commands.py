@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import asyncio
 import functools
 import logging
@@ -59,14 +61,11 @@ class VoiceCommands(commands.Cog, Helpers):
                 audio, obj = await self.get_async_audio(self, Server, {"discord_id": member.guild.id, 'enabled': True})
                 query_obj = AudioInServer
 
-            obj_audio = None
-
             if audio:
                 obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode})
 
-            path = f"{config.path}/{audio.hashcode}.mp3"
+                path = f"{config.path}/{audio.hashcode}.mp3"
 
-            if audio:
                 voice = get(self.client.voice_clients, guild=member.guild)
                 voice = await self.connect(voice, after)
                 if str(member.guild.id) not in self.queue:
