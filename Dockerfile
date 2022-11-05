@@ -1,6 +1,8 @@
 
 FROM python:3.9.2
 ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONPATH="/:$PYTHONPATH"
 
 RUN apt-get -y update
 RUN apt-get -y upgrade
@@ -12,8 +14,8 @@ WORKDIR /app
 COPY requirements.txt /app
 RUN pip install -r requirements.txt
 
-COPY . /app
+COPY . /app/
 
-CMD ["wavU.py"]
+CMD ["python", "service/manage.py", "migrate", "--settings=service.settings.production"]
 
-ENTRYPOINT ["python3"]
+CMD ["python", "service/manage.py", "runwavu", "--settings=service.settings.production"]
