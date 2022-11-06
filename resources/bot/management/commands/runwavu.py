@@ -5,15 +5,12 @@ import logging
 from os.path import join, dirname, isfile, basename
 
 import discord.utils
-from discord.ext import commands
 from django.core.management.base import BaseCommand
 
 import config
 import content
+from config import client
 
-intents = discord.Intents.all()
-intents.members = True
-client = commands.Bot(command_prefix=config.prefix, help_command=None, intents=intents)
 
 @client.command(aliases=['Help'])
 async def help(ctx):

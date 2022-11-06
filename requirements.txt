@@ -13,6 +13,8 @@ django
 django-extensions
 django-environ
 psycopg2
+djangorestframework
+djangorestframework-api-key
 
 #debbuging/testing
 pytest
