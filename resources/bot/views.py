@@ -6,7 +6,7 @@ from config import client
 
 
 class CountServer(APIView):
-    permission_classes = [HasAPIKey | IsAuthenticated]
 
-    def post(self, request):
+    def get(self, request):
+        import ipdb; ipdb.set_trace()
         return Response(len(client.guilds))

@@ -14,8 +14,6 @@ from pathlib import Path
 import environ
 import os
 
-DEBUG = True
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,8 +27,12 @@ SECRET_KEY = 'django-insecure-gre4r2ur0!(3=vqn2_i55sqdl@m9m@9vxn$3_%f)_2psid5fk1
 # SECURITY WARNING: don't run with debug turned on in production!
 
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "172.17.0.1", "127.0.0.1"]
 
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+DEBUG = True
+APPEND_SLASH = True
 
 # Application definition
 
@@ -42,6 +44,9 @@ DJANGO_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'corsheaders',
+    'rest_framework',
+    'rest_framework_api_key',
 ]
 
 LOCAL_APPS = [
@@ -61,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'service.urls'

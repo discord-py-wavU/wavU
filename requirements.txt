@@ -12,7 +12,7 @@ ffmpeg
 django
 django-extensions
 django-environ
-psycopg2
+psycopg2-binary 
 djangorestframework
 djangorestframework-api-key
 

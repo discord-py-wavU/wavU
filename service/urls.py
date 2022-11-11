@@ -16,6 +16,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from resources.bot.views import *
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/count_server/', CountServer.as_view(), name='count_server'),
 ]
