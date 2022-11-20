@@ -61,9 +61,12 @@ class VoiceCommands(commands.Cog, Helpers):
                 audio, obj = await self.get_async_audio(self, Server, {"discord_id": member.guild.id, 'enabled': True})
                 query_obj = AudioInServer
 
+            obj_audio = None
+            
             if audio:
-                obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode})
+                obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode, 'enabled': True})
 
+            if obj_audio:
                 path = f"{config.path}/{audio.hashcode}.mp3"
 
                 voice = get(self.client.voice_clients, guild=member.guild)

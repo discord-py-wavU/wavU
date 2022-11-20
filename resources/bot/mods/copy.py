@@ -2,7 +2,6 @@
 
 import asyncio
 
-from asgiref.sync import sync_to_async
 from discord.ext import commands
 
 import config
@@ -28,7 +27,8 @@ class CopyCommand(commands.Cog, Helpers):
                 audio, created = await self.get_or_create_object(
                     AudioInServer, {'audio': audio, 'server': server}, {'name': audio_name})
             elif obj_type_dest == "Channel" or obj_type_dest == "Member":
-                entity = await self.get_object(self, Entity, {'discord_id': discord_id_dest, 'server': server})
+                entity, created = await self.get_or_create_object(
+                    Entity, {'discord_id': discord_id_dest, 'server': server})
                 audio, created = await self.get_or_create_object(
                     AudioInEntity, {'audio': audio, 'entity': entity}, {'name': audio_name})
 
