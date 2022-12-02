@@ -62,7 +62,7 @@ class VoiceCommands(commands.Cog, Helpers):
                 query_obj = AudioInServer
 
             obj_audio = None
-            
+
             if audio:
                 obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode, 'enabled': True})
 
@@ -123,8 +123,6 @@ class VoiceCommands(commands.Cog, Helpers):
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
 
-        volume_obj = await obj.afirst()
-
         if audios:
             msg = f"Choose a number to play a _**.mp3**_ file or _**cancel**_\n"
             await self.show_audio_list(self, ctx, audios, msg)
@@ -142,29 +140,28 @@ class VoiceCommands(commands.Cog, Helpers):
                         await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                              "**" + audios[int(msg.content) - 1] + '** was chosen', 30)
                         audio_to_play = f"{config.path}/{hashcodes[int(msg.content) - 1]}.mp3"
+                        volume_obj = obj[int(msg.content) - 1]
                         try:
                             if str(ctx.guild.id) not in self.queue:
                                 channel = ctx.author.voice.channel
                                 voice = await channel.connect()
                                 await self.start_playing(self, voice, ctx.author, audio_to_play, volume_obj)
                             else:
-                                self.queue[str(ctx.guild.id)].append(audio_to_play)
+                                self.queue[str(ctx.guild.id)].append((audio_to_play, volume_obj))
                         except discord.ClientException as e:
                             logging.exception(str(e))
                             await asyncio.sleep(1)
-                            self.queue[str(ctx.guild.id)].append(audio_to_play)
+                            self.queue[str(ctx.guild.id)].append((audio_to_play, volume_obj))
                         break
                     elif str(msg.content).lower() == "cancel":
                         await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                              "Nothing has been **chosen**", 30)
-                        loop.create_task(self.delete_message(msg))
                         break
                     elif int(msg.content) > len(audios) or int(msg.content) == 0:
                         await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                              f'That number is not an option. Try again **({str(i + 1)}"/3)**', 10)
                         await ctx.send("That number is not an option. Try again **(" + str(i + 1) + "/3)**",
                                        delete_after=10)
-                        loop.create_task(self.delete_message(msg))
                         if i == 2:
                             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                                  'None of the attempts were correct, wavU could not choose any file')
