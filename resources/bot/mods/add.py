@@ -21,6 +21,7 @@ from resources.bot.helpers import Helpers
 class AddCommand(commands.Cog, Helpers):
 
     def __init__(self, client):
+        super().__init__()
         self.client = client
 
     @staticmethod
@@ -354,5 +355,5 @@ class AddCommand(commands.Cog, Helpers):
             await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
 
 
-def setup(client):
-    client.add_cog(AddCommand(client))
+async def setup(client):
+    await client.add_cog(AddCommand(client))

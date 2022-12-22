@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
-
+import asyncio
 import glob
 import logging
 from os.path import join, dirname, isfile, basename
 
 import discord.utils
+from discord.ext import commands
 from django.core.management.base import BaseCommand
 
 import config
 import content
 from config import client
+
+logging.basicConfig(level=logging.INFO)
 
 
 @client.command(aliases=['Help'])
@@ -54,21 +57,47 @@ async def servers(ctx, arg=None):
         await ctx.send("No valid argument")
 
 
+@client.command()
+async def ext(ctx, arg=None):
+    if arg:
+        try:
+            logging.info(f"Module to reaload: {arg}")
+            await client.reload_extension(f"resources.bot.mods.{arg}")
+            await ctx.send("OK")
+            logging.info("[OK]")
+        except commands.errors.ExtensionNotLoaded:
+            await ctx.send("This module could not be reload")
+            logging.info("This module could not be reload")
+
+    else:
+        logging.info("Reloading")
+        modules = glob.glob(join(dirname(__file__), "..", "..", "mods", "*.py"))
+        for f in modules:
+            try:
+                if isfile(f) and not f.endswith("__init__.py"):
+                    logging.info(basename(f)[:-3])
+                    await client.reload_extension(f"resources.bot.mods.{basename(f)[:-3]}")
+                    logging.info(f"[OK]")
+            except commands.errors.ExtensionNotLoaded:
+                await ctx.send(f"This {basename(f)[:-3]} module could not be reload")
+                logging.info(f"This {basename(f)[:-3]} module could not be reload")
+
+        logging.info("Modules loaded")
+
+
 class Command(BaseCommand):
     help = 'Runs the Discord bot'
 
     def handle(self, *args, **options):
 
-        print("Starting bot...\n")
-        print("Importing modules:")
+        logging.info("Starting bot...")
+        logging.info("Importing modules:")
         modules = glob.glob(join(dirname(__file__), "..", "..", "mods", "*.py"))
         for f in modules:
             if isfile(f) and not f.endswith("__init__.py"):
-                print("   %s ... " % basename(f)[:-3], end="")
-                client.load_extension(f"resources.bot.mods.{basename(f)[:-3]}")
-                print(f"[OK]")
-
-        print("")
-        print("Modules loaded")
+                logging.info(f"Module to reaload: {basename(f)[:-3]}")
+                asyncio.run(client.load_extension(f"resources.bot.mods.{basename(f)[:-3]}"))
+                logging.info(f"[OK]")
+        logging.info("Modules loaded")
 
         client.run(config.token)

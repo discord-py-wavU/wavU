@@ -33,5 +33,5 @@ class ListCommand(commands.Cog, Helpers):
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}", "_List is empty_")
 
 
-def setup(client):
-    client.add_cog(ListCommand(client))
+async def setup(client):
+    await client.add_cog(ListCommand(client))

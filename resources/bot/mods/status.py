@@ -8,6 +8,7 @@ from resources.bot.helpers import Helpers
 class Status(commands.Cog, Helpers):
 
     def __init__(self, client):
+        super().__init__()
         self.client = client
 
     @commands.command()
@@ -36,5 +37,5 @@ class Status(commands.Cog, Helpers):
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}", "_List is empty_", 10)
 
 
-def setup(client):
-    client.add_cog(Status(client))
+async def setup(client):
+    await client.add_cog(Status(client))

@@ -2,15 +2,17 @@
 
 import asyncio
 
+import discord
 from asgiref.sync import sync_to_async
 from discord.ext import commands
 
-from resources.bot.helpers import Helpers
+from resources.bot.helpers import Helpers, running_commands
 
 
 class OnCommand(commands.Cog, Helpers):
 
     def __init__(self, client):
+        super().__init__()
         self.client = client
 
     @staticmethod
@@ -21,6 +23,9 @@ class OnCommand(commands.Cog, Helpers):
     @commands.command(alieses=['On'])
     async def on(self, ctx, arg=None):
 
+        if not await self.check_if_running(self, ctx):
+            return
+
         has_role = await self.required_role(self, ctx)
         if not has_role:
             return
@@ -29,53 +34,70 @@ class OnCommand(commands.Cog, Helpers):
         if not valid:
             return
 
-        obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
+        objects, audios, hashcodes = await self.search_songs(self, ctx, arg)
+
+        tuple_obj = [[obj.name, obj.enabled] for obj in objects]
+
+        loop = self.client.loop or asyncio.get_event_loop()
 
         if audios:
+            actual_page = 0
 
-            msg = "Choose a number to enabled a _**.mp3**_ file, _**cancel**_ or _**all**_\n"
+            self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
+            self.page_len = len(self.list_audios)
 
-            await self.show_audio_list(self, ctx, audios, msg)
+            msg = "Choose a number to enabled a file\n"
+            emb_msg = await self.show_status_list(self, ctx, self.list_audios[0])
 
-            def check(m):
-                return (m.content.isdigit() and
-                        m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
-                       or str(m.content).lower() == "cancel" \
-                       or str(m.content).lower() == "all"
+            def check(reaction, user):
+                return user != self.client.user and user.guild.id == ctx.guild.id
+
+            task_core_reaction = loop.create_task(self.core_reactions(self, emb_msg, actual_page))
 
             try:
-                for i in range(3):
-                    msg = await self.client.wait_for('message', check=check, timeout=30)
-                    if msg.content.isdigit() and int(msg.content) <= len(audios) and int(msg.content) != 0:
-                        hashcode = hashcodes[int(msg.content) - 1]
-                        await self.enable_audio(obj, hashcode)
-                        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                             f'**{audios[int(msg.content) - 1]}** has been _**enabled**_', 30)
-                        break
-                    elif str(msg.content).lower() == "cancel":
-                        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                             "Nothing has been _**enabled**_", 30)
-                        break
-                    elif str(msg.content).lower() == "all":
-                        for index in range(len(audios)):
-                            hashcode = hashcodes[index - 1]
-                            await self.enable_audio(obj, hashcode)
-                        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                             "All the _**.mp3**_ files has been _**enabled**_", 30)
-                        break
-                    elif int(msg.content) > len(audios) or int(msg.content) == 0:
-                        await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
-                                             "That number is not an option. Try again **(" + str(i + 1) + "/3)**", 10)
-                        if i == 2:
-                            await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
-                                                 "None of the attempts were correct, _**enabled**_ has been aborted",
-                                                 10)
+                while True:
+                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=600)
+                    if reaction:
+                        await asyncio.sleep(0.1)
+                        await emb_msg.remove_reaction(emoji=reaction.emoji, member=user)
+
+                    if user.id != ctx.message.author.id:
+                        continue
+
+                    if str(reaction.emoji) == "➡️" or str(reaction.emoji) == "⬅️":
+                        if actual_page:
+                            await actual_page
+                        if task_core_reaction is not None:
+                            await task_core_reaction
+
+                        actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg, False, True))
+
+                    if str(reaction.emoji) in self.dict_numbers:
+                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                        hashcode = hashcodes[offset]
+                        await self.enable_audio(objects, hashcode)
+                        await self.embed_msg(ctx, f"{ctx.message.author.name}:",
+                                             f'**{audios[offset]}** has been _**enabled**_', 5)
+                        tuple_obj[offset][1] = True
+                        self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
+                        await self.edit_status_message(emb_msg, msg, self.list_audios[self.actual_page])
+                    elif str(reaction.emoji) == '❌':
+                        await emb_msg.delete()
+                        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                              color=0xFC65E1)
+                        await ctx.send(embed=embed, delete_after=10)
+                        running_commands.remove(ctx.author)
+                        return
 
             except asyncio.TimeoutError:
-                await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
+                await self.embed_msg(ctx, f"Timeout!",
+                                     'This command was cancelled', 10)
+                await emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}", "_List is empty_", 10)
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
+                                 'List is empty')
+        running_commands.remove(ctx.author)
 
 
-def setup(client):
-    client.add_cog(OnCommand(client))
+async def setup(client):
+    await client.add_cog(OnCommand(client))
