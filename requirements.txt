@@ -1,4 +1,4 @@
-discord.py==1.7.3
+discord.py==2.1.0
 PyNaCl
 youtube_dl
 requests
