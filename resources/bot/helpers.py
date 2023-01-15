@@ -241,9 +241,7 @@ class Helpers:
 
         audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
         server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
-
-        print(filename)
-
+        
         if arg is None:
             audio, created = await self.get_or_create_object(AudioInServer,
                                                              {'audio': audio, 'server': server}, {'name': filename})
