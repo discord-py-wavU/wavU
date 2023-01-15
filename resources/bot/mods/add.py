@@ -272,6 +272,9 @@ class AddCommand(commands.Cog, Helpers):
         # Discord async loop
         loop = self.client.loop or asyncio.get_event_loop()
 
+        if not await self.check_if_running(self, ctx):
+            return
+
         # Check if member has required role
         if not await self.required_role(self, ctx):
             return
