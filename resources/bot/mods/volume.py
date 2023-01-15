@@ -42,7 +42,6 @@ class VolumeCommand(commands.Cog, Helpers):
             if str(msg_volume.content).lower() == "cancel":
                 await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                      "_**Volume**_ has not been changed", 5)
-
                 return
 
             is_valid = True

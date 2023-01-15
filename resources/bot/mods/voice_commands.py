@@ -90,10 +90,12 @@ class VoiceCommands(commands.Cog, Helpers):
         if ctx.author.voice is None:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  "You need to be connected on a **Voice channel**", 30)
+            running_commands.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
+            running_commands.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
