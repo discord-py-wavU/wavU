@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import functools
+import logging
 import re
 
 import discord
@@ -11,8 +13,20 @@ from resources.audio.models import Audio, AudioInEntity, AudioInServer
 from resources.entity.models import Entity
 from resources.server.models import Server
 
+running_commands = set()
+
 
 class Helpers:
+
+    def __init__(self):
+        self.queue = {}
+        self.list_audios = []
+        self.page_len = 0
+        self.actual_page = 0
+        self.dict_numbers = {'1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣', '5': '5️⃣',
+                             '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣', '10': '🔟',
+                             '1️⃣': '1', '2️⃣': '2', '3️⃣': '3', '4️⃣': '4', '5️⃣': '5',
+                             '6️⃣': '6', '7️⃣': '7', '8️⃣': '8', '9️⃣': '9', '🔟': '10'}
 
     @staticmethod
     async def get_or_create_object(obj, kwargs, default=None):
@@ -28,7 +42,7 @@ class Helpers:
             objects = await self.filter_object(obj, kwargs)
             gotten_obj = await sync_to_async(lambda: objects.distinct().first(), thread_sensitive=True)()
         except Exception as e:
-            print(e)
+            logging.exception(e)
             gotten_obj = None
         return gotten_obj
 
@@ -81,9 +95,9 @@ class Helpers:
     async def show_audio_list(self, ctx, audios, msg):
         list_songs = ""
         for index, song in enumerate(audios):
-            list_songs = list_songs + f"{str(index + 1)}. {song.split('.mp3')[0]}\n"
+            list_songs = list_songs + f"{str(index + 1)}. {song}\n"
         list_songs = f"{list_songs}cancel"
-        await self.embed_msg(ctx, f"List .mp3 files:", f"{msg}{list_songs}", 30)
+        return await self.embed_msg(ctx, f"List .mp3 files:", f"{msg}{list_songs}")
 
     @staticmethod
     async def required_role(self, ctx, guild=None):
@@ -101,6 +115,7 @@ class Helpers:
                                  "Only members who have administrator permissions are able to assign _**FM**_ role.\n"
                                  f"Command: \"**{config.prefix} role @mention**\"")
             has_role = False
+            running_commands.remove(ctx.author)
 
         return has_role
 
@@ -189,6 +204,7 @@ class Helpers:
                                      f"This format is wrong, please use **{config.prefix}help**", 30)
                 valid = False
                 obj_type = ""
+                running_commands.remove(ctx.author)
         else:
             valid = True
             discord_id = ctx.message.guild.id
@@ -238,16 +254,16 @@ class Helpers:
             await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                  f"**{filename}** was added to **{ctx.message.guild.name}**")
 
-            print(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
-                  f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
 
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  f"You already have **{filename}** in **{ctx.message.guild.name} **")
 
-            print(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
-                  f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
-        print(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
+        logging.info(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
 
     @staticmethod
     async def delete_message(msg, time: int):
@@ -260,7 +276,7 @@ class Helpers:
         embed.add_field(name=name,
                         value=value,
                         inline=False)
-        await ctx.send(embed=embed, delete_after=delete)
+        return await ctx.send(embed=embed, delete_after=delete)
 
     @staticmethod
     def add_song(path, r):
@@ -269,3 +285,131 @@ class Helpers:
                 if chunk:
                     f.write(chunk)
         f.close()
+
+    @staticmethod
+    async def show_status_list(self, ctx, objects):
+        list_songs = ""
+        for index, obj in enumerate(objects):
+            emoji = ":white_check_mark:" if obj[1] else ":x:"
+            list_songs = list_songs + f"{str(index + 1)}. {obj[0]} {emoji}\n"
+        if list_songs:
+            return await self.embed_msg(ctx, f"List .mp3 files:", f"{list_songs}")
+
+    @staticmethod
+    async def edit_status_message(emb_msg, msg, objects):
+        list_songs = ""
+        for index, obj in enumerate(objects):
+            emoji = ":white_check_mark:" if obj[1] else ":x:"
+            list_songs = list_songs + f"{str(index + 1)}. {obj[0]} {emoji}\n"
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=f"List .mp3 files:",
+                        value=f"{msg}{list_songs}",
+                        inline=False)
+
+        await emb_msg.edit(embed=embed)
+
+    @staticmethod
+    async def start_playing(self, voice, member, path_to_play, obj_audio):
+        loop = self.client.loop or asyncio.get_event_loop()
+        self.queue[str(member.guild.id)] = [(path_to_play, obj_audio)]
+
+        i = 0
+        avoid = 0
+        while i < len(self.queue[str(member.guild.id)]) and avoid < 3:
+            try:
+                volume = int(self.queue[str(member.guild.id)][i][1].volume) / 100
+                audio = self.queue[str(member.guild.id)][i][0]
+                await asyncio.sleep(0.5)
+                partial = functools.partial(voice.play,
+                                            discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audio), volume=volume))
+                await loop.run_in_executor(None, partial)
+                while voice.is_playing():
+                    await asyncio.sleep(1)
+                i += 1
+                avoid = 0
+            except discord.ClientException as e:
+                logging.exception(str(e))
+                await asyncio.sleep(1)
+                i += 1
+                avoid += 1
+
+        del self.queue[str(member.guild.id)]
+        await asyncio.sleep(1)
+        await voice.disconnect()
+
+    @staticmethod
+    async def edit_message(self, emb_msg, msg):
+        list_songs = ""
+        for index, song in enumerate(self.list_audios[self.actual_page]):
+            list_songs = list_songs + f"{str(index + 1)}. {song}\n"
+        list_songs = f"{list_songs}cancel"
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=f"List .mp3 files:",
+                        value=f"{msg}{list_songs}",
+                        inline=False)
+
+        await emb_msg.edit(embed=embed)
+
+    @staticmethod
+    async def arrows_reactions(self, emb_msg, reaction, msg, out_of_range=False, edit_status=False):
+
+        prev = self.list_audios[self.actual_page]
+
+        if str(reaction.emoji) == "➡️":
+            self.actual_page = (self.actual_page + 1) % self.page_len
+        elif str(reaction.emoji) == "⬅️" or out_of_range:
+            self.actual_page = (self.actual_page - 1) % self.page_len
+
+        actual = self.list_audios[self.actual_page]
+
+        if edit_status:
+            await self.edit_status_message(emb_msg, msg, self.list_audios[self.actual_page])
+        else:
+            await self.edit_message(self, emb_msg, msg)
+
+        if len(actual) < len(prev):
+            remove = len(prev) - len(actual)
+            for ind in range(remove):
+                await asyncio.sleep(0.1)
+                await emb_msg.remove_reaction(emoji=self.dict_numbers[str(len(prev) - ind)], member=self.client.user)
+        else:
+            add = len(actual) - len(prev)
+            for ind in range(add):
+                await asyncio.sleep(0.1)
+                await emb_msg.add_reaction(self.dict_numbers[str(len(prev) + ind + 1)])
+
+        return actual
+
+    @staticmethod
+    async def core_reactions(self, msg_em, actual_page):
+
+        await msg_em.add_reaction('⬅️')
+        await msg_em.add_reaction('❌')
+        await msg_em.add_reaction('➡️')
+
+        for ind in range(len(self.list_audios[actual_page])):
+            await msg_em.add_reaction(self.dict_numbers[str(ind + 1)])
+            await asyncio.sleep(0.1)
+
+    @staticmethod
+    async def check_if_running(self, ctx):
+        # Check if the user is in the set of running commands
+        if ctx.author in running_commands:
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name} ",
+                                 "You cannot use more than one command at once, "
+                                 "please finish or cancel your current process", 30)
+            # Return False if the user is already running a command
+            return False
+        else:
+            # Add the user to the set of running commands
+            running_commands.add(ctx.author)
+
+            # Return True if the user is not already running a command
+            return True
+
+    @staticmethod
+    async def delete_embed_message(ctx, emb_msg):
+        await emb_msg.delete()
+        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                              color=0xFC65E1)
+        await ctx.send(embed=embed, delete_after=10)

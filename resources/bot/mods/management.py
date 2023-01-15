@@ -15,6 +15,7 @@ from resources.server.models import Server
 class Management(commands.Cog, Helpers):
 
     def __init__(self, client):
+        super().__init__()
         self.client = client
 
     @commands.Cog.listener()
@@ -86,5 +87,5 @@ class Management(commands.Cog, Helpers):
                 await msg.delete()
 
 
-def setup(client):
-    client.add_cog(Management(client))
+async def setup(client):
+    await client.add_cog(Management(client))

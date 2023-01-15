@@ -9,10 +9,12 @@ from resources.bot.helpers import Helpers
 class UnroleCommand(commands.Cog, Helpers):
 
     def __init__(self, client):
+        super().__init__()
         self.client = client
 
     @commands.command(aliases=['Unrole'])
     async def unrole(self, ctx, arg=None):
+
         fm_rol = get(ctx.guild.roles, name="FM")
 
         if ctx.message.author.guild_permissions.administrator:
@@ -33,5 +35,5 @@ class UnroleCommand(commands.Cog, Helpers):
                                  f"You need to have administrator permissions to assign FM role")
 
 
-def setup(client):
-    client.add_cog(UnroleCommand(client))
+async def setup(client):
+    await client.add_cog(UnroleCommand(client))

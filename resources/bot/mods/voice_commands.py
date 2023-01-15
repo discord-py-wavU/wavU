@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
-import functools
 import logging
 
 import discord
@@ -10,7 +9,7 @@ from discord.utils import get
 
 import config
 from resources.audio.models import AudioInServer, AudioInEntity
-from resources.bot.helpers import Helpers
+from resources.bot.helpers import Helpers, running_commands
 from resources.entity.models import Entity
 from resources.server.models import Server
 
@@ -18,8 +17,8 @@ from resources.server.models import Server
 class VoiceCommands(commands.Cog, Helpers):
 
     def __init__(self, client):
+        super().__init__()
         self.client = client
-        self.queue = {}
 
     @staticmethod
     async def connect(voice, after):
@@ -80,42 +79,18 @@ class VoiceCommands(commands.Cog, Helpers):
             if voice and voice.is_connected():
                 await voice.disconnect()
 
-    @staticmethod
-    async def start_playing(self, voice, member, path_to_play, obj_audio):
-        loop = self.client.loop or asyncio.get_event_loop()
-        self.queue[str(member.guild.id)] = [(path_to_play, obj_audio)]
-
-        i = 0
-        avoid = 0
-        while i < len(self.queue[str(member.guild.id)]) and avoid < 3:
-            try:
-                volume = int(self.queue[str(member.guild.id)][i][1].volume) / 100
-                audio = self.queue[str(member.guild.id)][i][0]
-                partial = functools.partial(voice.play,
-                                            discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audio), volume=volume))
-                await loop.run_in_executor(None, partial)
-                while voice.is_playing():
-                    await asyncio.sleep(1)
-                i += 1
-                avoid = 0
-            except discord.ClientException as e:
-                logging.exception(str(e))
-                await asyncio.sleep(1)
-                avoid += 1
-
-        del self.queue[str(member.guild.id)]
-        await asyncio.sleep(1)
-        await voice.disconnect()
-
     @commands.command(aliases=['Choose', 'ch', 'c', 'Ch', 'C'])
     async def choose(self, ctx, arg=None):
+
+        if not await self.check_if_running(self, ctx):
+            return
+
+        loop = self.client.loop or asyncio.get_event_loop()
 
         if ctx.author.voice is None:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  "You need to be connected on a **Voice channel**", 30)
             return
-
-        loop = self.client.loop or asyncio.get_event_loop()
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
@@ -124,55 +99,72 @@ class VoiceCommands(commands.Cog, Helpers):
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
 
         if audios:
-            msg = f"Choose a number to play a _**.mp3**_ file or _**cancel**_\n"
-            await self.show_audio_list(self, ctx, audios, msg)
+            actual_page = 0
 
-            def check(m):
-                return (m.content.isdigit() and
-                        m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id) \
-                       or str(m.content).lower() == "cancel"
+            self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
+            self.page_len = len(self.list_audios)
+
+            msg = f"Choose a number to play a file\n"
+            emb_msg = await self.show_audio_list(self, ctx, self.list_audios[0], msg)
+
+            def check(reaction, user):
+                return user != self.client.user and user.guild.id == ctx.guild.id
+
+            task_core_reaction = loop.create_task(self.core_reactions(self, emb_msg, actual_page))
 
             try:
-                for i in range(3):
-                    msg = await self.client.wait_for('message', check=check, timeout=30)
-                    if msg.content.isdigit() and int(msg.content) <= len(audios) and int(msg.content) != 0:
+                while True:
+                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=600)
+                    if reaction:
+                        await asyncio.sleep(0.1)
+                        await emb_msg.remove_reaction(emoji=reaction.emoji, member=user)
 
-                        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                             "**" + audios[int(msg.content) - 1] + '** was chosen', 30)
-                        audio_to_play = f"{config.path}/{hashcodes[int(msg.content) - 1]}.mp3"
-                        volume_obj = obj[int(msg.content) - 1]
+                    if user.id != ctx.message.author.id:
+                        continue
+
+                    if str(reaction.emoji) == "➡️" or str(reaction.emoji) == "⬅️":
+                        if actual_page:
+                            await actual_page
+                        if task_core_reaction is not None:
+                            await task_core_reaction
+
+                        actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
+
+                    if str(reaction.emoji) in self.dict_numbers:
+                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                        try:
+                            audio_to_play = f"{config.path}/{hashcodes[offset]}.mp3"
+                            volume_obj = obj[offset]
+                        except IndexError as IE:
+                            logging.warning(IE)
+                            continue
                         try:
                             if str(ctx.guild.id) not in self.queue:
                                 channel = ctx.author.voice.channel
                                 voice = await channel.connect()
-                                await self.start_playing(self, voice, ctx.author, audio_to_play, volume_obj)
+                                loop.create_task(self.start_playing(self, voice, ctx.author, audio_to_play, volume_obj))
                             else:
                                 self.queue[str(ctx.guild.id)].append((audio_to_play, volume_obj))
                         except discord.ClientException as e:
-                            logging.exception(str(e))
+                            logging.warning(str(e))
                             await asyncio.sleep(1)
                             self.queue[str(ctx.guild.id)].append((audio_to_play, volume_obj))
-                        break
-                    elif str(msg.content).lower() == "cancel":
-                        await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                             "Nothing has been **chosen**", 30)
-                        break
-                    elif int(msg.content) > len(audios) or int(msg.content) == 0:
-                        await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                             f'That number is not an option. Try again **({str(i + 1)}"/3)**', 10)
-                        await ctx.send("That number is not an option. Try again **(" + str(i + 1) + "/3)**",
-                                       delete_after=10)
-                        if i == 2:
-                            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                                 'None of the attempts were correct, wavU could not choose any file')
+                    elif str(reaction.emoji) == '❌':
+                        await emb_msg.delete()
+                        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                              color=0xFC65E1)
+                        await ctx.send(embed=embed, delete_after=10)
+                        running_commands.remove(ctx.author)
+                        return
+
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"Timeout!",
-                                     'This command was cancelled', 15)
-                await asyncio.sleep(15)
-                await ctx.message.delete()
+                                     'This command was cancelled', 600)
+                await emb_msg.delete()
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  'List is empty')
+        running_commands.remove(ctx.author)
 
     @commands.command(aliases=['shutup', 'disconnect', 'disc', 'Shutup', 'Stop', 'Disconnect', 'Disc'])
     async def stop(self, ctx):
@@ -186,5 +178,5 @@ class VoiceCommands(commands.Cog, Helpers):
                                  '**wavU** is not connected')
 
 
-def setup(client):
-    client.add_cog(VoiceCommands(client))
+async def setup(client):
+    await client.add_cog(VoiceCommands(client))

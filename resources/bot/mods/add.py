@@ -15,12 +15,13 @@ from discord.ext import commands
 from pydub import AudioSegment
 
 import config
-from resources.bot.helpers import Helpers
+from resources.bot.helpers import Helpers, running_commands
 
 
 class AddCommand(commands.Cog, Helpers):
 
     def __init__(self, client):
+        super().__init__()
         self.client = client
 
     @staticmethod
@@ -271,19 +272,25 @@ class AddCommand(commands.Cog, Helpers):
         # Discord async loop
         loop = self.client.loop or asyncio.get_event_loop()
 
+        if not await self.check_if_running(self, ctx):
+            return
+
         # Check if member has required role
         if not await self.required_role(self, ctx):
+            running_commands.remove(ctx.author)
             return
 
         # Add command doesn't use two arguments
         if arg2:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  f"This format is wrong, please use **{config.prefix}help**", 30)
+            running_commands.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
 
         if not valid:
+            running_commands.remove(ctx.author)
             return
 
         # Embed message to member
@@ -304,6 +311,7 @@ class AddCommand(commands.Cog, Helpers):
             if str(msg.content).lower() == "cancel":
                 await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                      "Nothing has been **added**", 30)
+                running_commands.remove(ctx.author)
                 return
 
             # Member sent a youtube link
@@ -315,10 +323,12 @@ class AddCommand(commands.Cog, Helpers):
                 file_title, file_duration = await self.get_file_info(self, ctx, msg.content)
 
                 if file_title is None or file_duration is None:
+                    running_commands.remove(ctx.author)
                     return
 
                 await self.link_file(self, ctx, arg, file_title, file_duration, discord_id)
 
+                running_commands.remove(ctx.author)
                 return
 
             headers = {
@@ -328,7 +338,8 @@ class AddCommand(commands.Cog, Helpers):
             request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=False)
             filename = msg.attachments[0].filename
             mp3 = filename.split('.')
-            path = f"{config.path}/{filename}"
+            path = f"{config.path}/{filename}.mp3"
+            filename = filename.replace(".mp3", "")
 
             if mp3[len(mp3) - 1] == "mp3":
                 async with ctx.typing():
@@ -352,7 +363,8 @@ class AddCommand(commands.Cog, Helpers):
 
         except asyncio.TimeoutError:
             await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
+        running_commands.remove(ctx.author)
 
 
-def setup(client):
-    client.add_cog(AddCommand(client))
+async def setup(client):
+    await client.add_cog(AddCommand(client))
