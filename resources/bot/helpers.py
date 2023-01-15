@@ -42,7 +42,7 @@ class Helpers:
             objects = await self.filter_object(obj, kwargs)
             gotten_obj = await sync_to_async(lambda: objects.distinct().first(), thread_sensitive=True)()
         except Exception as e:
-            print(e)
+            logging.exception(e)
             gotten_obj = None
         return gotten_obj
 
@@ -241,7 +241,7 @@ class Helpers:
 
         audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
         server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
-        
+
         if arg is None:
             audio, created = await self.get_or_create_object(AudioInServer,
                                                              {'audio': audio, 'server': server}, {'name': filename})
@@ -254,16 +254,16 @@ class Helpers:
             await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                  f"**{filename}** was added to **{ctx.message.guild.name}**")
 
-            print(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
-                  f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
 
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  f"You already have **{filename}** in **{ctx.message.guild.name} **")
 
-            print(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
-                  f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
-        print(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
+        logging.info(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
 
     @staticmethod
     async def delete_message(msg, time: int):

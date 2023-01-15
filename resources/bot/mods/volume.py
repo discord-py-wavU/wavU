@@ -105,7 +105,6 @@ class VolumeCommand(commands.Cog, Helpers):
             emb_msg = await self.show_audio_list(self, ctx, self.list_audios[0], msg)
 
             def check(reaction, user):
-                print(reaction)
                 return user != self.client.user and user.guild.id == ctx.guild.id
 
             task_core_reaction = loop.create_task(self.core_reactions(self, emb_msg, actual_page))
