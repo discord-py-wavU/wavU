@@ -29,10 +29,12 @@ class OffCommand(commands.Cog, Helpers):
 
         has_role = await self.required_role(self, ctx)
         if not has_role:
+            running_commands.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
+            running_commands.remove(ctx.author)
             return
 
         objects, audios, hashcodes = await self.search_songs(self, ctx, arg)
@@ -79,7 +81,7 @@ class OffCommand(commands.Cog, Helpers):
                             hashcode = hashcodes[offset]
                             await self.disable_audio(objects, hashcode)
                             await self.embed_msg(ctx, f"{ctx.message.author.name}:",
-                                                f'**{audios[offset]}** has been _**disabled**_', 5)
+                                                 f'**{audios[offset]}** has been _**disabled**_', 5)
                             tuple_obj[offset][1] = False
                             self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
                             await self.edit_status_message(emb_msg, msg, self.list_audios[self.actual_page])

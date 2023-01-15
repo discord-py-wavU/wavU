@@ -26,10 +26,12 @@ class DownloadCommand(commands.Cog, Helpers):
 
         has_role = await self.required_role(self, ctx)
         if not has_role:
+            running_commands.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
+            running_commands.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)

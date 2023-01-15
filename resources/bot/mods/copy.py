@@ -80,30 +80,38 @@ class CopyCommand(commands.Cog, Helpers):
     @commands.command(aliases=['Copy', 'co', 'Co', 'share', 'Share', 'sh', 'Sh'])
     async def copy(self, ctx, arg=None, arg2=None, arg3=None):
 
+        if not await self.check_if_running(self, ctx):
+            return
+
         has_role = await self.required_role(self, ctx)
         if not has_role:
+            running_commands.remove(ctx.author)
             return
 
         if not arg or not arg2:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  f"This format is wrong, please use **{config.prefix}help**", 30)
+            running_commands.remove(ctx.author)
             return
 
         valid, discord_id_src, server_id, discord_id_dest, obj_type_dest = \
             await self.valid_arguments(self, ctx, arg, arg2, arg3)
 
         if not valid:
+            running_commands.remove(ctx.author)
             return
 
         if discord_id_src and discord_id_src == discord_id_dest and server_id == ctx.guild.id:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  f"You can't copy an audio in the same container", 30)
+            running_commands.remove(ctx.author)
             return
 
         if obj_type_dest == "Server" and discord_id_dest and discord_id_dest != server_id:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  f"You can't copy an audio to _common_ "
                                  f"server files if server destination is different", 30)
+            running_commands.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
@@ -148,10 +156,10 @@ class CopyCommand(commands.Cog, Helpers):
                             audio = audios[offset]
                             hashcode = hashcodes[offset]
                             valid = await self.copy_file(self, ctx, audio, hashcode, discord_id_dest, server_id,
-                                                        obj_type_dest)
+                                                         obj_type_dest)
                             if valid:
                                 await self.embed_msg(ctx, f"{ctx.message.author.name} here is your file",
-                                                    f'**{audios[offset]}** has been _**moved**_', 30)
+                                                     f'**{audios[offset]}** has been _**moved**_', 30)
                         except IndexError as IE:
                             logging.warning(IE)
                     elif str(reaction.emoji) == '❌':
