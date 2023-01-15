@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import logging
 
 import discord
 from asgiref.sync import sync_to_async
@@ -73,14 +74,17 @@ class OffCommand(commands.Cog, Helpers):
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg, False, True))
 
                     if str(reaction.emoji) in self.dict_numbers:
-                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
-                        hashcode = hashcodes[offset]
-                        await self.disable_audio(objects, hashcode)
-                        await self.embed_msg(ctx, f"{ctx.message.author.name}:",
-                                             f'**{audios[offset]}** has been _**disabled**_', 5)
-                        tuple_obj[offset][1] = False
-                        self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
-                        await self.edit_status_message(emb_msg, msg, self.list_audios[self.actual_page])
+                        try:
+                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            hashcode = hashcodes[offset]
+                            await self.disable_audio(objects, hashcode)
+                            await self.embed_msg(ctx, f"{ctx.message.author.name}:",
+                                                f'**{audios[offset]}** has been _**disabled**_', 5)
+                            tuple_obj[offset][1] = False
+                            self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
+                            await self.edit_status_message(emb_msg, msg, self.list_audios[self.actual_page])
+                        except IndexError as IE:
+                            logging.warning(IE)
                     elif str(reaction.emoji) == '❌':
                         await emb_msg.delete()
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import logging
 
 import discord
 from discord.ext import commands
@@ -142,15 +143,17 @@ class CopyCommand(commands.Cog, Helpers):
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
                     if str(reaction.emoji) in self.dict_numbers:
-
-                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
-                        audio = audios[offset]
-                        hashcode = hashcodes[offset]
-                        valid = await self.copy_file(self, ctx, audio, hashcode, discord_id_dest, server_id,
-                                                     obj_type_dest)
-                        if valid:
-                            await self.embed_msg(ctx, f"{ctx.message.author.name} here is your file",
-                                                 f'**{audios[offset]}** has been _**moved**_', 30)
+                        try:
+                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            audio = audios[offset]
+                            hashcode = hashcodes[offset]
+                            valid = await self.copy_file(self, ctx, audio, hashcode, discord_id_dest, server_id,
+                                                        obj_type_dest)
+                            if valid:
+                                await self.embed_msg(ctx, f"{ctx.message.author.name} here is your file",
+                                                    f'**{audios[offset]}** has been _**moved**_', 30)
+                        except IndexError as IE:
+                            logging.warning(IE)
                     elif str(reaction.emoji) == '❌':
                         await emb_msg.delete()
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",

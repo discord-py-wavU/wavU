@@ -7,6 +7,7 @@ import os
 import discord
 from asgiref.sync import sync_to_async
 from discord.ext import commands
+from django.db import transaction
 
 import config
 from resources.bot.helpers import Helpers, running_commands
@@ -18,15 +19,18 @@ class DeleteCommand(commands.Cog, Helpers):
         super().__init__()
         self.client = client
 
+    def deleted_object(self, obj, hashcode):
+        obj_filtered = obj.filter(audio__hashcode=hashcode)
+        obj_filtered.delete()
+
     @staticmethod
-    async def delete_obj_and_file(obj, hashcode):
+    async def delete_obj_and_file(self, obj, hashcode):
         try:
             os.remove(f"{config.path}/{hashcode}.mp3")
         except FileNotFoundError as FNFE:
             logging.warning(FNFE)
         finally:
-            obj_filtered = await sync_to_async(obj.filter, thread_sensitive=True)(audio__hashcode=hashcode)
-            await sync_to_async(obj_filtered.delete, thread_sensitive=True)()
+            await sync_to_async(self.deleted_object, thread_sensitive=True)(obj, hashcode)
 
     @commands.command(aliases=['Delete', 'del', 'Del', 'remove', 'Remove', 'rm', 'Rm', 'RM'])
     async def delete(self, ctx, arg=None):
@@ -89,7 +93,7 @@ class DeleteCommand(commands.Cog, Helpers):
                             await task_core_reaction
                         try:
                             offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
-                            # await self.delete_obj_and_file(obj, hashcodes[offset])
+                            await self.delete_obj_and_file(self, obj, hashcodes[offset])
                             audios.remove(audios[offset])
                             prev_len = len(self.list_audios[self.actual_page])
                             self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
@@ -98,12 +102,14 @@ class DeleteCommand(commands.Cog, Helpers):
                         except IndexError as IE:
                             logging.warning(IE)
                             if self.actual_page:
-                                self.actual_page -= 1
-                                actual_page = loop.create_task(
-                                    self.arrows_reactions(self, emb_msg, reaction, msg, True))
-                                for ind in range(10):
-                                    await asyncio.sleep(0.1)
-                                    await emb_msg.add_reaction(self.dict_numbers[str(ind + 1)])
+                                if not self.list_audios[self.actual_page]:
+                                    self.actual_page -= 1
+                                    self.page_len -= 1
+                                    actual_page = loop.create_task(
+                                        self.arrows_reactions(self, emb_msg, reaction, msg, True))
+                                    for ind in range(10):
+                                        await asyncio.sleep(0.1)
+                                        await emb_msg.add_reaction(self.dict_numbers[str(ind + 1)])
                                 continue
                             else:
                                 await emb_msg.delete()

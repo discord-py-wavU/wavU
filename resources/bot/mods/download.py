@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import logging
 
 import discord
 from discord.ext import commands
@@ -66,9 +67,12 @@ class DownloadCommand(commands.Cog, Helpers):
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
                     if str(reaction.emoji) in self.dict_numbers:
-                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
-                        await ctx.send(file=discord.File(fp=f"{config.path}/{hashcodes[offset]}.mp3",
-                                                         filename=f"{audios[offset]}.mp3"), delete_after=5)
+                        try:
+                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            await ctx.send(file=discord.File(fp=f"{config.path}/{hashcodes[offset]}.mp3",
+                                                            filename=f"{audios[offset]}.mp3"), delete_after=5)
+                        except IndexError as IE:
+                            logging.warning(IE)
                     elif str(reaction.emoji) == '❌':
                         await emb_msg.delete()
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",

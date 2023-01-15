@@ -88,7 +88,7 @@ class EditCommand(commands.Cog, Helpers):
                         offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
                         hashcode = hashcodes[offset]
                         await self.edit_obj_and_file(obj, hashcode, msg_name.content)
-                        audios[offset] = msg_name.content + ".mp3"
+                        audios[offset] = msg_name.content
                         self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
                         await self.edit_message(self, emb_msg, msg)
                         await msg_name.delete()

@@ -329,7 +329,7 @@ class AddCommand(commands.Cog, Helpers):
             request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=False)
             filename = msg.attachments[0].filename
             mp3 = filename.split('.')
-            path = f"{config.path}/{filename}"
+            path = f"{config.path}/{filename}.mp3"
 
             if mp3[len(mp3) - 1] == "mp3":
                 async with ctx.typing():

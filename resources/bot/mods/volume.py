@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import logging
 
 import discord
 from asgiref.sync import sync_to_async
@@ -126,9 +127,12 @@ class VolumeCommand(commands.Cog, Helpers):
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
                     if str(reaction.emoji) in self.dict_numbers:
-                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
-                        hashcode = hashcodes[offset]
-                        await self.change_volume(ctx, audios, offset, obj, hashcode)
+                        try:
+                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            hashcode = hashcodes[offset]
+                            await self.change_volume(ctx, audios, offset, obj, hashcode)
+                        except IndexError as IE:
+                            logging.warning(IE)
                     elif str(reaction.emoji) == '❌':
                         await emb_msg.delete()
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
