@@ -242,6 +242,8 @@ class Helpers:
         audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
         server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
 
+        print(filename)
+
         if arg is None:
             audio, created = await self.get_or_create_object(AudioInServer,
                                                              {'audio': audio, 'server': server}, {'name': filename})
@@ -319,6 +321,7 @@ class Helpers:
             try:
                 volume = int(self.queue[str(member.guild.id)][i][1].volume) / 100
                 audio = self.queue[str(member.guild.id)][i][0]
+                await asyncio.sleep(0.5)
                 partial = functools.partial(voice.play,
                                             discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audio), volume=volume))
                 await loop.run_in_executor(None, partial)
@@ -329,6 +332,7 @@ class Helpers:
             except discord.ClientException as e:
                 logging.exception(str(e))
                 await asyncio.sleep(1)
+                i += 1
                 avoid += 1
 
         del self.queue[str(member.guild.id)]

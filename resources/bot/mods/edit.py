@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import logging
 
 import discord
 from asgiref.sync import sync_to_async
@@ -84,14 +85,17 @@ class EditCommand(commands.Cog, Helpers):
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
                     if str(reaction.emoji) in self.dict_numbers:
-                        msg_name = await self.get_name(self, ctx)
-                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
-                        hashcode = hashcodes[offset]
-                        await self.edit_obj_and_file(obj, hashcode, msg_name.content)
-                        audios[offset] = msg_name.content
-                        self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
-                        await self.edit_message(self, emb_msg, msg)
-                        await msg_name.delete()
+                        try:
+                            msg_name = await self.get_name(self, ctx)
+                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            hashcode = hashcodes[offset]
+                            await self.edit_obj_and_file(obj, hashcode, msg_name.content)
+                            audios[offset] = msg_name.content
+                            self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
+                            await self.edit_message(self, emb_msg, msg)
+                            await msg_name.delete()
+                        except IndexError as IE:
+                            logging.warning(IE)
                     elif str(reaction.emoji) == '❌':
                         await emb_msg.delete()
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",

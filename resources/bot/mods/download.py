@@ -70,7 +70,7 @@ class DownloadCommand(commands.Cog, Helpers):
                         try:
                             offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
                             await ctx.send(file=discord.File(fp=f"{config.path}/{hashcodes[offset]}.mp3",
-                                                            filename=f"{audios[offset]}.mp3"), delete_after=5)
+                                                             filename=f"{audios[offset]}.mp3"), delete_after=5)
                         except IndexError as IE:
                             logging.warning(IE)
                     elif str(reaction.emoji) == '❌':
