@@ -330,6 +330,7 @@ class AddCommand(commands.Cog, Helpers):
             filename = msg.attachments[0].filename
             mp3 = filename.split('.')
             path = f"{config.path}/{filename}.mp3"
+            filename = filename.replace(".mp3", "")
 
             if mp3[len(mp3) - 1] == "mp3":
                 async with ctx.typing():
