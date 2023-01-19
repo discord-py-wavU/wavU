@@ -32,6 +32,7 @@ jobs:
 
     - name: Build the Docker image
       run: |
+        workon wavu
         python service/manage.py migrate --settings=service.settings.production
         python service/manage.py runwavu --settings=service.settings.production
         
