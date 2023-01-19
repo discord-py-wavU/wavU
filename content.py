@@ -9,7 +9,7 @@ side_color = 0xFC65E1
 emoji = "<:WavU:813997355975835669>"
 
 title = f"{emoji} Hello everyone! My name is {bot_name} " \
-        f"\nand i'm here to help you!"
+        f"\nand I'm here to help you!"
 description = "These are **all** the commands you can use\n\n" \
               "**Commands**"
 
