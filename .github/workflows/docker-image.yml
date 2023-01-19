@@ -17,6 +17,5 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: |
-        cd
-        sudo docker build --file ./wavu/wavU/Dockerfile -t wavu .
+        sudo docker build --file /home/pepi/wavu/wavU/Dockerfile -t wavu .
         sudo docker run --name wavu --network="host" -d --restart always -v /home/pepi/wavu/audios:/app/audio wavu
