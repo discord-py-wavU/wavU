@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v2
     - run: |
-        apt-get -y update
-        apt-get -y upgrade
-        apt-get install -y ffmpeg
-
-    - uses: actions/checkout@v2
+        sudo apt-get -y update
+        sudo apt-get -y upgrade
+        sudo apt-get install -y ffmpeg
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -29,8 +29,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    
-    - uses: actions/checkout@v3
+
     - name: Build the Docker image
       run: |
         python service/manage.py migrate --settings=service.settings.production
