@@ -18,4 +18,4 @@ jobs:
     - name: Build the Docker image
       run: |
         sudo docker build -t wavu .
-        sudo docker run --name wavu --network="host" -d --restart always -v /home/pepi/wavu/audios:/app/audio wavu
+        sudo docker run --name wavu --network="host" -d --restart always -v /home/pepi/wavu/audios:/app/audio --force wavu
