@@ -41,7 +41,7 @@ async def help(ctx):
 @client.event
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))
-    logging.info("Bot is ready")
+    logging.info("Bot is ready!")
 
 
 @client.command(aliases=['serv', 'ser'])
