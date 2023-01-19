@@ -26,6 +26,6 @@ jobs:
         cd /home/pepi/wavu/wavU
         sudo docker build --file ./Dockerfile -t wavu .
         sudo docker stop wavu
-        sudo docker container prune
+        sudo docker container prune -y
         sudo docker run --name wavu --network="host" -d --restart always -v /home/pepi/wavu/audios:/app/audio wavu
-        sudo docker image prune
+        sudo docker image prune -y
