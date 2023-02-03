@@ -85,6 +85,12 @@ async def ext(ctx, arg=None):
         logging.info("Modules loaded")
 
 
+@client.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send(f"Sorry {ctx.message.author.name}. {error}")
+
+
 class Command(BaseCommand):
     help = 'Runs the Discord bot'
 
