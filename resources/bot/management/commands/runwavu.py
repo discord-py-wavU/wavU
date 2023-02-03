@@ -11,6 +11,7 @@ from django.core.management.base import BaseCommand
 import config
 import content
 from config import client
+from resources.bot.helpers import Helpers
 
 logging.basicConfig(level=logging.INFO)
 
@@ -88,7 +89,8 @@ async def ext(ctx, arg=None):
 @client.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send(f"Sorry {ctx.message.author.name}. {error}")
+        await Helpers.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                f"{error}", 30)
 
 
 class Command(BaseCommand):
