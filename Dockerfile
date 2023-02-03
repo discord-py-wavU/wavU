@@ -7,6 +7,8 @@ ENV PYTHONPATH="/:$PYTHONPATH"
 RUN apt-get -y update
 RUN apt-get -y upgrade
 
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 957D2708A03A4626
+
 # Update the package list and install necessary dependencies
 RUN apt-get update && apt-get install -y software-properties-common
 
