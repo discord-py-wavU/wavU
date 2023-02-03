@@ -6,7 +6,11 @@ ENV PYTHONPATH="/:$PYTHONPATH"
 
 RUN apt-get -y update
 RUN apt-get -y upgrade
-RUN apt-get install -y ffmpeg
+RUN apt-get install -y software-properties-common && \
+    add-apt-repository ppa:oibaf/graphics-drivers && \
+    apt-get update && \
+    apt-get install -y libgl1-mesa-dri libgl1-mesa-glx \
+RUN apt-get install -y ffmpeg && apt-get install -y libva-intel-driver
 
 RUN mkdir /app
 WORKDIR /app
