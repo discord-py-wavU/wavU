@@ -3,6 +3,7 @@
 import asyncio
 import logging
 
+import discord.errors
 from discord.ext import commands
 
 import content
@@ -68,16 +69,19 @@ class Management(commands.Cog, Helpers):
 
         entity, created = await self.get_or_create_object(Entity, {'discord_id': member.id})
 
-        if created:
-            logging.info(f'The server {member.guild.name} was joined')
-            await self.embed_msg(member, f"Welcome to **{member.guild.name}**",
-                                 "I'm wavU and i'll appear on *Voice channels* "
-                                 "everytime someone joins in and play any random audio this server has. To know more "
-                                 "about me, type **=help**. Have a nice day!")
-        else:
-            await self.embed_msg(member, f"Welcome to **{member.guild.name}**",
-                                 f"Hey {member.name}, you already know me. You are able to use _copy_ command to "
-                                 f"bring your audios to **{member.guild.name}** server (_FM_ Role required)")
+        try:
+            if created:
+                logging.info(f'The server {member.guild.name} was joined')
+                await self.embed_msg(member, f"Welcome to **{member.guild.name}**",
+                                     "I'm wavU and i'll appear on *Voice channels* "
+                                     "everytime someone joins in and play any random audio this server has. "
+                                     "To know more about me, type **=help**. Have a nice day!")
+            else:
+                await self.embed_msg(member, f"Welcome to **{member.guild.name}**",
+                                     f"Hey {member.name}, you already know me. You are able to use _copy_ command to "
+                                     f"bring your audios to **{member.guild.name}** server (_FM_ Role required)")
+        except discord.errors.HTTPException as e:
+            logging.error(e)
 
         await asyncio.sleep(3 * 60 * 60)
 
