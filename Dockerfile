@@ -6,10 +6,15 @@ ENV PYTHONPATH="/:$PYTHONPATH"
 
 RUN apt-get -y update
 RUN apt-get -y upgrade
+RUN apt-get install -y wget
+
+RUN wget http://security.ubuntu.com/ubuntu/pool/universe/libv/libva-intel-driver/libva-intel-driver_2.6.0-1_amd64.deb
+
+RUN dpkg -i libva-intel-driver_2.6.0-1_amd64.deb
 
 # Install FFmpeg and the Intel hardware acceleration library
 RUN apt-get install -y ffmpeg
-RUN apt-get install -y libva-intel-driver i965-va-driver
+
 
 RUN mkdir /app
 WORKDIR /app
