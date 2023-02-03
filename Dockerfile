@@ -4,26 +4,11 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONPATH="/:$PYTHONPATH"
 
-RUN apt-get update && apt-get install -y \
-    autoconf \
-    automake \
-    build-essential \
-    libass-dev \
-    libtool \
-    pkg-config \
-    git \
- && rm -rf /var/lib/apt/lists/*
+# Install the snapd package manager
+RUN apt-get update && apt-get install -y snapd
 
-# Download FFmpeg source code
-RUN git clone https://github.com/FFmpeg/FFmpeg.git
-
-# Build and install FFmpeg
-WORKDIR /FFmpeg
-RUN ./configure \
- && make \
- && make install
-
-RUN cd
+# Install FFmpeg
+RUN snap install ffmpeg
 
 RUN mkdir /app
 WORKDIR /app
