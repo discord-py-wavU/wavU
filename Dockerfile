@@ -1,13 +1,6 @@
 
-FROM python:3.9.2
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONPATH="/:$PYTHONPATH"
-
-RUN apt-get -y update
-RUN apt-get -y upgrade
-
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 957D2708A03A4626
+# Start with a base image
+FROM ubuntu:20.04
 
 # Add the repository for the Intel graphics drivers
 RUN echo "deb http://ppa.launchpad.net/oibaf/graphics-drivers/ubuntu focal main" >> /etc/apt/sources.list
@@ -17,6 +10,15 @@ RUN apt-get update && apt-get install -y libgl1-mesa-dri libgl1-mesa-glx
 
 # Install FFmpeg and the Intel hardware acceleration library
 RUN apt-get install -y ffmpeg && apt-get install -y libva-intel-driver
+
+
+FROM python:3.9.2
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONPATH="/:$PYTHONPATH"
+
+RUN apt-get -y update
+RUN apt-get -y upgrade
 
 RUN mkdir /app
 WORKDIR /app
