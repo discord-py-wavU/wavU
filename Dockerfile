@@ -6,10 +6,16 @@ ENV PYTHONPATH="/:$PYTHONPATH"
 
 RUN apt-get -y update
 RUN apt-get -y upgrade
-RUN apt-get install -y software-properties-common && \
-    add-apt-repository ppa:oibaf/graphics-drivers && \
-    apt-get update && \
-    apt-get install -y libgl1-mesa-dri libgl1-mesa-glx \
+
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 957D2708A03A4626
+
+# Add the repository for the Intel graphics drivers
+RUN echo "deb http://ppa.launchpad.net/oibaf/graphics-drivers/ubuntu focal main" >> /etc/apt/sources.list
+
+# Update the package list and install the drivers
+RUN apt-get update && apt-get install -y libgl1-mesa-dri libgl1-mesa-glx
+
+# Install FFmpeg and the Intel hardware acceleration library
 RUN apt-get install -y ffmpeg && apt-get install -y libva-intel-driver
 
 RUN mkdir /app
