@@ -15,6 +15,7 @@ RUN add-apt-repository ppa:oibaf/graphics-drivers
 RUN apt-get update
 
 # Install FFmpeg and the Intel graphics acceleration libraries
+RUN apt-get install -y libavcodec58 libavdevice58 libavfilter7 libavformat58 libavresample4 libavutil56 libpostproc55 libswresample3 libswscale5
 RUN apt-get install -y ffmpeg
 RUN apt-get install -y libva-intel-driver i965-va-driver
 
