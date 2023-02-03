@@ -5,10 +5,16 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONPATH="/:$PYTHONPATH"
 
 # Install the snapd package manager
-RUN apt-get update && apt-get install -y snapd
+RUN apt-get update && \
+    apt-get install -y wget
 
-# Install FFmpeg
-RUN snap install ffmpeg
+WORKDIR /usr/local/bin
+
+RUN wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && \
+    tar -xf ffmpeg-release-amd64-static.tar.xz && \
+    rm ffmpeg-release-amd64-static.tar.xz && \
+    mv ffmpeg-*-static/ffmpeg . && \
+    rm -r ffmpeg-*-static
 
 RUN mkdir /app
 WORKDIR /app
