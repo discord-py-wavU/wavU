@@ -2,6 +2,9 @@
 # Start with a base image
 FROM ubuntu:20.04
 
+# Import the missing GPG key
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 957D2708A03A4626
+
 # Add the repository for the Intel graphics drivers
 RUN echo "deb http://ppa.launchpad.net/oibaf/graphics-drivers/ubuntu focal main" >> /etc/apt/sources.list
 
