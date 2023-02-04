@@ -6,9 +6,13 @@ ENV PYTHONPATH="/:$PYTHONPATH"
 
 RUN apt-get -y update
 RUN apt-get -y upgrade
-RUN apt install onevpl-tools vainfo intel-media-va-driver-non-free
 
-# Install FFmpeg and the Intel hardware acceleration library
+RUN apt-get install -y software-properties-common
+RUN  apt-get install -y libva-dev i965-va-driver-shader
+
+RUN add-apt-repository ppa:jonathonf/ffmpeg-4
+RUN apt-get update
+
 RUN apt-get install -y ffmpeg
 
 RUN mkdir /app
