@@ -4,10 +4,9 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONPATH="/:$PYTHONPATH"
 
-RUN apt-get update && apt-get install -y curl
-RUN curl https://gist.githubusercontent.com/feedsbrain/0191516b5625b577c2b14241cff4fe30/raw > ffmpeg-qsv.sh
-RUN chmod +x ffmpeg-qsv.sh
-RUN ./ffmpeg-qsv.sh
+RUN apt-get -y update
+RUN apt-get -y upgrade
+RUN apt-get install -y ffmpeg
 
 RUN mkdir /app
 WORKDIR /app
