@@ -4,16 +4,10 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONPATH="/:$PYTHONPATH"
 
-RUN apt-get -y update
-RUN apt-get -y upgrade
-
-RUN apt-get install -y software-properties-common
-RUN  apt-get install -y libva-dev i965-va-driver-shader
-
-RUN add-apt-repository ppa:jonathonf/ffmpeg-4
-RUN apt-get update
-
-RUN apt-get install -y ffmpeg
+RUN apt-get update && apt-get install -y curl
+RUN curl https://gist.githubusercontent.com/feedsbrain/0191516b5625b577c2b14241cff4fe30/raw > script.sh
+RUN chmod +x script.sh
+RUN ./ffmpeg-qsv.sh
 
 RUN mkdir /app
 WORKDIR /app
