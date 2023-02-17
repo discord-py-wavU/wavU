@@ -38,6 +38,7 @@ class DownloadCommand(commands.Cog, Helpers):
 
         if audios:
             actual_page = 0
+            self.actual_page = 0
 
             self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
             self.page_len = len(self.list_audios)

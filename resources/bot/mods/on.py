@@ -45,6 +45,7 @@ class OnCommand(commands.Cog, Helpers):
 
         if audios:
             actual_page = 0
+            self.actual_page = 0
 
             self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
             self.page_len = len(self.list_audios)
