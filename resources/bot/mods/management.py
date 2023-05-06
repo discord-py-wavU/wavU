@@ -83,13 +83,6 @@ class Management(commands.Cog, Helpers):
         except discord.errors.HTTPException as e:
             logging.error(e)
 
-        await asyncio.sleep(3 * 60 * 60)
-
-        msgs = member.dm_channel
-        async for msg in msgs.history(limit=10):
-            if msg.author == self.client.user:
-                await msg.delete()
-
 
 async def setup(client):
     await client.add_cog(Management(client))
