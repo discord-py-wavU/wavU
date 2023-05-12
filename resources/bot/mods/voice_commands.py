@@ -42,7 +42,7 @@ class VoiceCommands(commands.Cog, Helpers):
         is_connected = after.channel is not None and before.channel is not member.voice.channel
         not_wavu = member != self.client.user
         not_another_bot = not member.bot
-        move_from_channel = before.channel and before.channel.guild is after.channel.guild
+        move_from_channel = before.channel and after.channel and before.channel.guild is after.channel.guild
 
         try:
 
