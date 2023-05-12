@@ -39,42 +39,49 @@ class VoiceCommands(commands.Cog, Helpers):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
 
-        if after.channel is not None and before.channel is not member.voice.channel and member != self.client.user and \
-                not member.bot:
+        is_connected = after.channel is not None and before.channel is not member.voice.channel
+        not_wavu = member != self.client.user
+        not_another_bot = not member.bot
+        move_from_channel = before.channel and before.channel.guild is after.channel.guild
 
-            # Check first personal audios
-            audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.id,
-                                                                   'audios__enabled': True,
-                                                                   'server__discord_id': member.guild.id})
+        try:
 
-            # Second check channel audios
-            if not audio:
-                audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.voice.channel.id,
-                                                                       'audios__enabled': True,
-                                                                       'server__discord_id': member.guild.id})
+            if is_connected and not_wavu and not_another_bot and not move_from_channel:
 
-            query_obj = AudioInEntity
+                # Check first personal audios
+                audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.id,
+                                                                    'audios__enabled': True,
+                                                                    'server__discord_id': member.guild.id})
 
-            # Third check server audios
-            if not audio:
-                audio, obj = await self.get_async_audio(self, Server, {"discord_id": member.guild.id, 'enabled': True})
-                query_obj = AudioInServer
+                # Second check channel audios
+                if not audio:
+                    audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.voice.channel.id,
+                                                                        'audios__enabled': True,
+                                                                        'server__discord_id': member.guild.id})
 
-            obj_audio = None
+                query_obj = AudioInEntity
 
-            if audio:
-                obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode, 'enabled': True})
+                # Third check server audios
+                if not audio:
+                    audio, obj = await self.get_async_audio(self, Server, {"discord_id": member.guild.id, 'enabled': True})
+                    query_obj = AudioInServer
 
-            if obj_audio:
-                path = f"{config.path}/{audio.hashcode}.mp3"
+                obj_audio = None
 
-                voice = get(self.client.voice_clients, guild=member.guild)
-                voice = await self.connect(voice, after)
-                if str(member.guild.id) not in self.queue:
-                    await self.start_playing(self, voice, member, path, obj_audio)
-                else:
-                    self.queue[str(member.guild.id)].append((path, obj_audio))
-        elif after.channel is None and len(before.channel.members) == 1:
+                if audio:
+                    obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode, 'enabled': True})
+
+                if obj_audio:
+                    path = f"{config.path}/{audio.hashcode}.mp3"
+
+                    voice = get(self.client.voice_clients, guild=member.guild)
+                    voice = await self.connect(voice, after)
+                    if str(member.guild.id) not in self.queue:
+                        await self.start_playing(self, voice, member, path, obj_audio)
+                    else:
+                        self.queue[str(member.guild.id)].append((path, obj_audio))
+        except Exception as e:
+            logging.warn(f"Unexpected error {e}")
             voice = get(self.client.voice_clients, guild=member.guild)
             if voice and voice.is_connected():
                 await voice.disconnect()
