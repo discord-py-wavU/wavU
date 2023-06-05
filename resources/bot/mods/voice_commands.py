@@ -43,6 +43,7 @@ class VoiceCommands(commands.Cog, Helpers):
         not_wavu = member != self.client.user
         not_another_bot = not member.bot
         move_from_channel = before.channel and after.channel and before.channel.guild is after.channel.guild
+        voice = get(self.client.voice_clients, guild=member.guild)
 
         try:
 
@@ -74,16 +75,21 @@ class VoiceCommands(commands.Cog, Helpers):
                 if obj_audio:
                     path = f"{config.path}/{audio.hashcode}.mp3"
 
-                    voice = get(self.client.voice_clients, guild=member.guild)
+
                     voice = await self.connect(voice, after)
                     if str(member.guild.id) not in self.queue:
                         await self.start_playing(self, voice, member, path, obj_audio)
                     else:
                         self.queue[str(member.guild.id)].append((path, obj_audio))
+            elif is_connected and not_wavu and not_another_bot and move_from_channel:
+                if voice and voice.is_connected():
+                    await voice.move_to(after.channel)
+            elif after.channel is None and len(before.channel.members) == 1:
+                if voice and voice.is_connected():
+                    await voice.disconnect()
         except Exception as e:
             logging.warn(f"Unexpected error {e}")
-            voice = get(self.client.voice_clients, guild=member.guild)
-            if voice and voice.is_connected():
+            if voice and voice.is_connected() and after.channel is None:
                 await voice.disconnect()
 
     @commands.command(aliases=['Choose', 'ch', 'c', 'Ch', 'C'])
