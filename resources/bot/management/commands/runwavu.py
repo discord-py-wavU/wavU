@@ -13,7 +13,7 @@ import content
 from config import client
 from resources.bot.helpers import Helpers
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 @client.command(aliases=['Help'])
@@ -38,7 +38,32 @@ async def help(ctx):
     embed.add_field(name=content.field_title_join, value=content.field_description_join, inline=False)
     await ctx.send(embed=embed)
 
+@staticmethod
+async def buttons(amount):
+    view = discord.ui.View()
+    style = discord.ButtonStyle.gray
+    for i in range(amount):
+        item = discord.ui.Button(style=style, label=str(i), custom_id=str(i))
+        view.add_item(item=item)
+    return view
 
+
+@client.command()
+async def pepi(ctx):
+    await ctx.send(f"Hi We're glad you're here!")
+
+    view = await buttons(5)
+    await ctx.send("This is a test", view=view)
+
+    btn = await client.wait_for('interaction', timeout=20)
+    await btn.response.send_message("Button clicked")
+
+    await ctx.send(f"You clicked {btn.data.get('custom_id')} button")
+    
+    if await view.interaction_check(btn):
+        await ctx.send("View is done")
+
+ 
 @client.event
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))
@@ -89,8 +114,9 @@ async def ext(ctx, arg=None):
 @client.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await Helpers.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                f"{error}", 30)
+        msg_name = f"I'm sorry {ctx.message.author.name} :cry:"
+        msg_value = f"{error}"
+        await Helpers.embed_msg(ctx, msg_name, msg_value, 30)
 
 
 class Command(BaseCommand):

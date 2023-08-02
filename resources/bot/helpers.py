@@ -13,8 +13,11 @@ from resources.audio.models import Audio, AudioInEntity, AudioInServer
 from resources.entity.models import Entity
 from resources.server.models import Server
 
-running_commands = set()
-
+RUNNING_COMMAND = set()
+CHOOSE_NUMBER = {'1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣', '5': '5️⃣',
+                 '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣', '10': '🔟',
+                 '1️⃣': '1', '2️⃣': '2', '3️⃣': '3', '4️⃣': '4', '5️⃣': '5',
+                 '6️⃣': '6', '7️⃣': '7', '8️⃣': '8', '9️⃣': '9', '🔟': '10'}
 
 class Helpers:
 
@@ -23,10 +26,47 @@ class Helpers:
         self.list_audios = []
         self.page_len = 0
         self.actual_page = 0
-        self.dict_numbers = {'1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣', '5': '5️⃣',
-                             '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣', '10': '🔟',
-                             '1️⃣': '1', '2️⃣': '2', '3️⃣': '3', '4️⃣': '4', '5️⃣': '5',
-                             '6️⃣': '6', '7️⃣': '7', '8️⃣': '8', '9️⃣': '9', '🔟': '10'}
+        self.emb_msg = None
+        self.view = None
+        self.interaction = None
+
+    @staticmethod
+    async def get_mentions(mentions):
+        discord_ids = []
+        for mention in mentions:
+            discord_ids.append(mention.id)
+        return discord_ids
+
+    @staticmethod
+    async def get_id_from_mention(mention, discord_id):
+        value = re.findall(r'\b\d+\b', mention)
+        if value:
+            discord_id = int(value[0])
+        return discord_id
+
+    @staticmethod
+    def add_song(path, r):
+        with open(path, 'wb') as f:
+            for chunk in r.iter_content():
+                if chunk:
+                    f.write(chunk)
+        f.close()
+    
+    async def choose_direction(self):
+        if self.interaction == "right":
+            actual_page = (self.actual_page + 1) % self.page_len
+        elif self.interaction == "left" or self.out_of_range:
+            actual_page = (self.actual_page - 1) % self.page_len
+            self.out_of_range = False
+        return actual_page
+    
+
+class Query(Helpers):
+    
+    def __init__(self):
+        super().__init__()
+
+    # Get objects from queries methods
 
     @staticmethod
     async def get_or_create_object(obj, kwargs, default=None):
@@ -69,9 +109,8 @@ class Helpers:
             hashcode = await sync_to_async(lambda: obj.audio.hashcode, thread_sensitive=True)()
             audio_hashcode_list.append(hashcode)
         return objects, audio_name_list, audio_hashcode_list
-
-    @staticmethod
-    async def search_songs(self, ctx, arg):
+    
+    async def get_audios(self, ctx, arg):
 
         server = await self.get_object(self, Server, {'discord_id': ctx.message.guild.id})
         is_server = False
@@ -90,57 +129,59 @@ class Helpers:
                 self.get_async_audio_list(self, AudioInEntity, {'entity': entity})
 
         return obj, audio_name_list, audio_hashcode_list
-
+    
+    # Insertion methods
+    
     @staticmethod
-    async def show_audio_list(self, ctx, audios, msg):
-        list_songs = ""
-        for index, song in enumerate(audios):
-            list_songs = list_songs + f"{str(index + 1)}. {song}\n"
-        list_songs = f"{list_songs}cancel"
-        return await self.embed_msg(ctx, f"List .mp3 files:", f"{msg}{list_songs}")
+    async def insert_file_db(self, ctx, arg: str, filename: str, hashcode: str, discord_id):
 
-    @staticmethod
-    async def required_role(self, ctx, guild=None):
+        audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
+        server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
 
-        if not guild:
-            roles = ctx.message.author.roles
-            msg = f"You need _**FM**_ role to use this command.\n"
+        if arg is None:
+            audio, created = await self.get_or_create_object(AudioInServer,
+                                                             {'audio': audio, 'server': server}, {'name': filename})
         else:
-            roles = guild.get_member(ctx.message.author.id).roles
-            msg = f"You need _**FM**_ role on _**{guild.name}**_ to use this command.\n"
+            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_id, 'server': server})
+            audio, created = await self.get_or_create_object(AudioInEntity,
+                                                             {'audio': audio, 'entity': entity}, {'name': filename})
 
-        has_role = True
-        if "FM" not in (roles.name for roles in roles):
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:", msg +
-                                 "Only members who have administrator permissions are able to assign _**FM**_ role.\n"
-                                 f"Command: \"**{config.prefix} role @mention**\"")
-            has_role = False
-            running_commands.remove(ctx.author)
+        if created:
+            await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                 f"**{filename}** was added to **{ctx.message.guild.name}**")
 
-        return has_role
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
 
-    @staticmethod
-    async def get_mentions(mentions):
-        discord_ids = []
-        for mention in mentions:
-            discord_ids.append(mention.id)
-        return discord_ids
+        else:
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
+                                 f"You already have **{filename}** in **{ctx.message.guild.name} **")
 
-    @staticmethod
-    async def valid_amount_mentions(self, ctx, n):
-        valid = True
-        if len(ctx.message.mentions) > n:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 f"There are more than {n} mention on this message, please try again", 30)
-            valid = False
-        return valid
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
+        logging.info(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
+
+
+class Checker(Query):
+
+    def __init__(self):
+        super().__init__()
 
     @staticmethod
-    async def get_id_from_mention(mention, discord_id):
-        value = re.findall(r'\b\d+\b', mention)
-        if value:
-            discord_id = int(value[0])
-        return discord_id
+    async def check_if_running(self, ctx):
+        # Check if the user is in the set of running commands
+        if ctx.author in RUNNING_COMMAND:
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name} ",
+                                 "You cannot use more than one command at once, "
+                                 "please finish or cancel your current process", 30)
+            # Return False if the user is already running a command
+            return False
+        else:
+            # Add the user to the set of running commands
+            RUNNING_COMMAND.add(ctx.author)
+
+            # Return True if the user is not already running a command
+            return True
 
     @staticmethod
     async def valid_person(self, ctx, arg, discord_id):
@@ -182,7 +223,6 @@ class Helpers:
 
         return valid, discord_id
 
-    @staticmethod
     async def valid_arg(self, ctx, arg, server_id=None):
         if arg:
             name_channels_list = []
@@ -204,14 +244,14 @@ class Helpers:
                                      f"This format is wrong, please use **{config.prefix}help**", 30)
                 valid = False
                 obj_type = ""
-                running_commands.remove(ctx.author)
+                RUNNING_COMMAND.remove(ctx.author)
         else:
             valid = True
             discord_id = ctx.message.guild.id
             obj_type = "Server"
 
         return valid, discord_id, obj_type
-
+    
     @staticmethod
     async def valid_server(self, ctx, arg):
         discord_id = None
@@ -235,78 +275,172 @@ class Helpers:
                 return False, discord_id
 
         return True, discord_id
-
+    
     @staticmethod
-    async def insert_file_db(self, ctx, arg: str, filename: str, hashcode: str, discord_id):
+    async def valid_amount_mentions(self, ctx, n):
+        valid = True
+        if len(ctx.message.mentions) > n:
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
+                                 f"There are more than {n} mention on this message, please try again", 30)
+            valid = False
+        return valid
+    
+    @staticmethod
+    async def required_role(self, ctx, guild=None):
 
-        audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
-        server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
-
-        if arg is None:
-            audio, created = await self.get_or_create_object(AudioInServer,
-                                                             {'audio': audio, 'server': server}, {'name': filename})
+        if not guild:
+            roles = ctx.message.author.roles
+            msg = f"You need _**FM**_ role to use this command.\n"
         else:
-            entity, _ = await self.get_or_create_object(Entity, {'discord_id': discord_id, 'server': server})
-            audio, created = await self.get_or_create_object(AudioInEntity,
-                                                             {'audio': audio, 'entity': entity}, {'name': filename})
+            roles = guild.get_member(ctx.message.author.id).roles
+            msg = f"You need _**FM**_ role on _**{guild.name}**_ to use this command.\n"
 
-        if created:
-            await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                 f"**{filename}** was added to **{ctx.message.guild.name}**")
+        has_role = True
+        if "FM" not in (roles.name for roles in roles):
+            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:", msg +
+                                 "Only members who have administrator permissions are able to assign _**FM**_ role.\n"
+                                 f"Command: \"**{config.prefix} role @mention**\"")
+            has_role = False
+            RUNNING_COMMAND.remove(ctx.author)
 
-            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
-                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
+        return has_role
 
-        else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 f"You already have **{filename}** in **{ctx.message.guild.name} **")
 
-            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
-                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
-        logging.info(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
+class Message(Helpers):
 
-    @staticmethod
-    async def delete_message(msg, time: int):
-        await asyncio.sleep(time)
-        await msg.delete()
+    def __init__(self):
+        super().__init__()
 
-    @staticmethod
-    async def embed_msg(ctx, name: str, value: str, delete: int = None):
-        embed = discord.Embed(color=0xFC65E1)
-        embed.add_field(name=name,
-                        value=value,
-                        inline=False)
-        return await ctx.send(embed=embed, delete_after=delete)
+    # Build message methods
 
-    @staticmethod
-    def add_song(path, r):
-        with open(path, 'wb') as f:
-            for chunk in r.iter_content():
-                if chunk:
-                    f.write(chunk)
-        f.close()
-
-    @staticmethod
     async def show_status_list(self, ctx, objects):
         list_songs = ""
         for index, obj in enumerate(objects):
             emoji = ":white_check_mark:" if obj[1] else ":x:"
             list_songs = list_songs + f"{str(index + 1)}. {obj[0]} {emoji}\n"
         if list_songs:
-            return await self.embed_msg(ctx, f"List .mp3 files:", f"{list_songs}")
+            msg_name = f"List .mp3 files:"
+            msg_value = f"{list_songs}"
+            await self.embed_msg_with_view(ctx, msg_name, msg_value)
 
     @staticmethod
-    async def edit_status_message(emb_msg, msg, objects):
+    async def show_audio_list(self, ctx, audios, msg):
         list_songs = ""
-        for index, obj in enumerate(objects):
+        for index, song in enumerate(audios):
+            list_songs = list_songs + f"{str(index + 1)}. {song}\n"
+        list_songs = f"{list_songs}cancel"
+        return await self.embed_msg(ctx, f"List .mp3 files:", f"{msg}{list_songs}")
+
+    # Send message methods
+
+    async def embed_msg_with_interaction(self, btn, name: str, value: str, delete: int = None):
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=name,
+                        value=value,
+                        inline=False)
+        return await btn.response.send_message(embed=embed, delete_after=delete)
+
+    async def embed_msg_with_view(self, ctx, name: str, value: str, delete: int = None):
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=name,
+                        value=value,
+                        inline=False)
+        self.emb_msg = await ctx.send(embed=embed, view=self.view, delete_after=delete)
+
+    async def embed_msg(self, ctx, name: str, value: str, delete: int = None):
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=name,
+                        value=value,
+                        inline=False)
+        return await ctx.send(embed=embed, delete_after=delete)
+    
+    # Edit message methods
+    
+    async def edit_message(self, msg):
+        list_songs = ""
+        for index, song in enumerate(self.list_audios[self.actual_page]):
+            list_songs = list_songs + f"{str(index + 1)}. {song}\n"
+        list_songs = f"{list_songs}cancel"
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=f"List .mp3 files:",
+                        value=f"{msg}{list_songs}",
+                        inline=False)
+
+        await self.emb_msg.edit(embed=embed)
+
+    # Delete message methods
+
+    @staticmethod
+    async def delete_embed_message(ctx, emb_msg):
+        await emb_msg.delete()
+        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                              color=0xFC65E1)
+        await ctx.send(embed=embed, delete_after=10)
+
+    async def delete_message(self, msg, time: int):
+        await asyncio.sleep(time)
+        await msg.delete()
+
+class Button(Helpers):
+
+    def __init__(self):
+        super().__init__()
+
+    async def button_interactions(self):
+
+        grey = discord.ButtonStyle.gray
+        button = discord.ui.Button
+
+        self.view.add_item(item=button(style=grey, label="⬅️", custom_id="left"))
+        self.view.add_item(item=button(style=grey, label="❌", custom_id="cancel"))
+        self.view.add_item(item=button(style=grey, label="➡️", custom_id="right"))
+
+        for ind in range(len(self.list_audios[self.actual_page])):
+            self.view.add_item(item=button(style=grey, label=CHOOSE_NUMBER[str(ind + 1)], custom_id=str(ind + 1)))
+
+    async def add_interaction_buttons(self, msg: str):
+        prev = self.list_audios[self.actual_page]
+        await self.choose_direction()
+        actual = self.list_audios[self.actual_page]
+
+        await self.edit_message(msg)
+
+        if prev != actual:
+            self.view.clear_items()
+            await self.button_interactions(len(actual))
+
+        return actual
+
+class Status(Helpers):
+
+    def __init__(self):
+        super().__init__()
+
+    async def interaction_button_status(self, msg: str):
+        prev = self.actual_page
+        self.actual_page = await self.choose_direction()
+
+        await self.edit_status_message(msg)
+
+        if prev != self.actual_page:
+            await self.view.clear_items()
+            await self.button_interactions()
+
+    async def edit_status_message(self, msg):
+        list_songs = ""
+        for index, obj in enumerate(self.list_audios[self.actual_page]):
             emoji = ":white_check_mark:" if obj[1] else ":x:"
             list_songs = list_songs + f"{str(index + 1)}. {obj[0]} {emoji}\n"
         embed = discord.Embed(color=0xFC65E1)
         embed.add_field(name=f"List .mp3 files:",
                         value=f"{msg}{list_songs}",
                         inline=False)
+        await self.emb_msg.edit(embed=embed)
 
-        await emb_msg.edit(embed=embed)
+class Voice(Helpers):
+
+    def __init__():
+        super().__init__()
 
     @staticmethod
     async def start_playing(self, voice, member, path_to_play, obj_audio):
@@ -336,80 +470,3 @@ class Helpers:
         del self.queue[str(member.guild.id)]
         await asyncio.sleep(1)
         await voice.disconnect()
-
-    @staticmethod
-    async def edit_message(self, emb_msg, msg):
-        list_songs = ""
-        for index, song in enumerate(self.list_audios[self.actual_page]):
-            list_songs = list_songs + f"{str(index + 1)}. {song}\n"
-        list_songs = f"{list_songs}cancel"
-        embed = discord.Embed(color=0xFC65E1)
-        embed.add_field(name=f"List .mp3 files:",
-                        value=f"{msg}{list_songs}",
-                        inline=False)
-
-        await emb_msg.edit(embed=embed)
-
-    @staticmethod
-    async def arrows_reactions(self, emb_msg, reaction, msg, out_of_range=False, edit_status=False):
-
-        prev = self.list_audios[self.actual_page]
-
-        if str(reaction.emoji) == "➡️":
-            self.actual_page = (self.actual_page + 1) % self.page_len
-        elif str(reaction.emoji) == "⬅️" or out_of_range:
-            self.actual_page = (self.actual_page - 1) % self.page_len
-
-        actual = self.list_audios[self.actual_page]
-
-        if edit_status:
-            await self.edit_status_message(emb_msg, msg, self.list_audios[self.actual_page])
-        else:
-            await self.edit_message(self, emb_msg, msg)
-
-        if len(actual) < len(prev):
-            remove = len(prev) - len(actual)
-            for ind in range(remove):
-                await asyncio.sleep(0.1)
-                await emb_msg.remove_reaction(emoji=self.dict_numbers[str(len(prev) - ind)], member=self.client.user)
-        else:
-            add = len(actual) - len(prev)
-            for ind in range(add):
-                await asyncio.sleep(0.1)
-                await emb_msg.add_reaction(self.dict_numbers[str(len(prev) + ind + 1)])
-
-        return actual
-
-    @staticmethod
-    async def core_reactions(self, msg_em, actual_page):
-
-        await msg_em.add_reaction('⬅️')
-        await msg_em.add_reaction('❌')
-        await msg_em.add_reaction('➡️')
-
-        for ind in range(len(self.list_audios[actual_page])):
-            await msg_em.add_reaction(self.dict_numbers[str(ind + 1)])
-            await asyncio.sleep(0.1)
-
-    @staticmethod
-    async def check_if_running(self, ctx):
-        # Check if the user is in the set of running commands
-        if ctx.author in running_commands:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name} ",
-                                 "You cannot use more than one command at once, "
-                                 "please finish or cancel your current process", 30)
-            # Return False if the user is already running a command
-            return False
-        else:
-            # Add the user to the set of running commands
-            running_commands.add(ctx.author)
-
-            # Return True if the user is not already running a command
-            return True
-
-    @staticmethod
-    async def delete_embed_message(ctx, emb_msg):
-        await emb_msg.delete()
-        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                              color=0xFC65E1)
-        await ctx.send(embed=embed, delete_after=10)

@@ -9,7 +9,7 @@ from asgiref.sync import sync_to_async
 from discord.ext import commands
 
 import config
-from resources.bot.helpers import Helpers, running_commands
+from resources.bot.helpers import Helpers, RUNNING_COMMAND
 
 
 class DeleteCommand(commands.Cog, Helpers):
@@ -39,12 +39,12 @@ class DeleteCommand(commands.Cog, Helpers):
 
         has_role = await self.required_role(self, ctx)
         if not has_role:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
@@ -88,13 +88,13 @@ class DeleteCommand(commands.Cog, Helpers):
                             await task_core_reaction
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
-                    if str(reaction.emoji) in self.dict_numbers:
+                    if str(reaction.emoji) in CHOOSE_NUMBER:
                         if actual_page:
                             await actual_page
                         if task_core_reaction is not None:
                             await task_core_reaction
                         try:
-                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            offset = (self.actual_page * 10) + int(CHOOSE_NUMBER[str(reaction.emoji)]) - 1
                             await self.delete_obj_and_file(self, obj, hashcodes[offset])
                             audios.remove(audios[offset])
                             prev_len = len(self.list_audios[self.actual_page])
@@ -111,17 +111,17 @@ class DeleteCommand(commands.Cog, Helpers):
                                         self.arrows_reactions(self, emb_msg, reaction, msg, True))
                                     for ind in range(10):
                                         await asyncio.sleep(0.1)
-                                        await emb_msg.add_reaction(self.dict_numbers[str(ind + 1)])
+                                        await emb_msg.add_reaction(CHOOSE_NUMBER[str(ind + 1)])
                                 continue
                             else:
                                 await emb_msg.delete()
                                 embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                                       color=0xFC65E1)
                                 await ctx.send(embed=embed, delete_after=10)
-                                running_commands.remove(ctx.author)
+                                RUNNING_COMMAND.remove(ctx.author)
                                 return
                         if prev_len > actual_len:
-                            await emb_msg.remove_reaction(emoji=self.dict_numbers[str(actual_len + 1)],
+                            await emb_msg.remove_reaction(emoji=CHOOSE_NUMBER[str(actual_len + 1)],
                                                           member=self.client.user)
 
                         msg = f"Choose a number to delete a file\n"
@@ -131,7 +131,7 @@ class DeleteCommand(commands.Cog, Helpers):
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                               color=0xFC65E1)
                         await ctx.send(embed=embed, delete_after=10)
-                        running_commands.remove(ctx.author)
+                        RUNNING_COMMAND.remove(ctx.author)
                         return
 
             except asyncio.TimeoutError:
@@ -141,7 +141,7 @@ class DeleteCommand(commands.Cog, Helpers):
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  'List is empty')
-        running_commands.remove(ctx.author)
+        RUNNING_COMMAND.remove(ctx.author)
 
 
 async def setup(client):

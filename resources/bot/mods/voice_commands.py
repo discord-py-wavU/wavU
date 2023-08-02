@@ -9,7 +9,7 @@ from discord.utils import get
 
 import config
 from resources.audio.models import AudioInServer, AudioInEntity
-from resources.bot.helpers import Helpers, running_commands
+from resources.bot.helpers import Helpers, RUNNING_COMMAND
 from resources.entity.models import Entity
 from resources.server.models import Server
 
@@ -103,12 +103,12 @@ class VoiceCommands(commands.Cog, Helpers):
         if ctx.author.voice is None:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  "You need to be connected on a **Voice channel**", 30)
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
@@ -146,8 +146,8 @@ class VoiceCommands(commands.Cog, Helpers):
 
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
-                    if str(reaction.emoji) in self.dict_numbers:
-                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                    if str(reaction.emoji) in CHOOSE_NUMBER:
+                        offset = (self.actual_page * 10) + int(CHOOSE_NUMBER[str(reaction.emoji)]) - 1
                         try:
                             audio_to_play = f"{config.path}/{hashcodes[offset]}.mp3"
                             volume_obj = obj[offset]
@@ -170,7 +170,7 @@ class VoiceCommands(commands.Cog, Helpers):
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                               color=0xFC65E1)
                         await ctx.send(embed=embed, delete_after=10)
-                        running_commands.remove(ctx.author)
+                        RUNNING_COMMAND.remove(ctx.author)
                         return
 
             except asyncio.TimeoutError:
@@ -180,7 +180,7 @@ class VoiceCommands(commands.Cog, Helpers):
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  'List is empty')
-        running_commands.remove(ctx.author)
+        RUNNING_COMMAND.remove(ctx.author)
 
     @commands.command(aliases=['shutup', 'disconnect', 'disc', 'Shutup', 'Stop', 'Disconnect', 'Disc'])
     async def stop(self, ctx):

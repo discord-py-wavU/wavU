@@ -7,7 +7,7 @@ import discord
 from asgiref.sync import sync_to_async
 from discord.ext import commands
 
-from resources.bot.helpers import Helpers, running_commands
+from resources.bot.helpers import Helpers, RUNNING_COMMAND
 
 
 class VolumeCommand(commands.Cog, Helpers):
@@ -82,12 +82,12 @@ class VolumeCommand(commands.Cog, Helpers):
 
         has_role = await self.required_role(self, ctx)
         if not has_role:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
@@ -127,9 +127,9 @@ class VolumeCommand(commands.Cog, Helpers):
 
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
-                    if str(reaction.emoji) in self.dict_numbers:
+                    if str(reaction.emoji) in CHOOSE_NUMBER:
                         try:
-                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            offset = (self.actual_page * 10) + int(CHOOSE_NUMBER[str(reaction.emoji)]) - 1
                             hashcode = hashcodes[offset]
                             await self.change_volume(ctx, audios, offset, obj, hashcode)
                         except IndexError as IE:
@@ -139,7 +139,7 @@ class VolumeCommand(commands.Cog, Helpers):
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                               color=0xFC65E1)
                         await ctx.send(embed=embed, delete_after=10)
-                        running_commands.remove(ctx.author)
+                        RUNNING_COMMAND.remove(ctx.author)
                         return
 
             except asyncio.TimeoutError:
@@ -149,7 +149,7 @@ class VolumeCommand(commands.Cog, Helpers):
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  'List is empty')
-        running_commands.remove(ctx.author)
+        RUNNING_COMMAND.remove(ctx.author)
 
 
 async def setup(client):

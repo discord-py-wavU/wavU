@@ -8,7 +8,7 @@ from discord.ext import commands
 
 import config
 from resources.audio.models import Audio, AudioInServer, AudioInEntity
-from resources.bot.helpers import Helpers, running_commands
+from resources.bot.helpers import Helpers, RUNNING_COMMAND
 from resources.entity.models import Entity
 from resources.server.models import Server
 
@@ -85,33 +85,33 @@ class CopyCommand(commands.Cog, Helpers):
 
         has_role = await self.required_role(self, ctx)
         if not has_role:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         if not arg or not arg2:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  f"This format is wrong, please use **{config.prefix}help**", 30)
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         valid, discord_id_src, server_id, discord_id_dest, obj_type_dest = \
             await self.valid_arguments(self, ctx, arg, arg2, arg3)
 
         if not valid:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         if discord_id_src and discord_id_src == discord_id_dest and server_id == ctx.guild.id:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  f"You can't copy an audio in the same container", 30)
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         if obj_type_dest == "Server" and discord_id_dest and discord_id_dest != server_id:
             await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
                                  f"You can't copy an audio to _common_ "
                                  f"server files if server destination is different", 30)
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
@@ -151,9 +151,9 @@ class CopyCommand(commands.Cog, Helpers):
 
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
-                    if str(reaction.emoji) in self.dict_numbers:
+                    if str(reaction.emoji) in CHOOSE_NUMBER:
                         try:
-                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            offset = (self.actual_page * 10) + int(CHOOSE_NUMBER[str(reaction.emoji)]) - 1
                             audio = audios[offset]
                             hashcode = hashcodes[offset]
                             valid = await self.copy_file(self, ctx, audio, hashcode, discord_id_dest, server_id,
@@ -168,7 +168,7 @@ class CopyCommand(commands.Cog, Helpers):
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                               color=0xFC65E1)
                         await ctx.send(embed=embed, delete_after=10)
-                        running_commands.remove(ctx.author)
+                        RUNNING_COMMAND.remove(ctx.author)
                         return
 
             except asyncio.TimeoutError:
@@ -178,7 +178,7 @@ class CopyCommand(commands.Cog, Helpers):
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  'List is empty')
-        running_commands.remove(ctx.author)
+        RUNNING_COMMAND.remove(ctx.author)
 
 
 async def setup(client):

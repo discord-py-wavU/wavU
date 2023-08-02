@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 
 import config
-from resources.bot.helpers import Helpers, running_commands
+from resources.bot.helpers import Helpers, RUNNING_COMMAND
 
 
 class DownloadCommand(commands.Cog, Helpers):
@@ -26,12 +26,12 @@ class DownloadCommand(commands.Cog, Helpers):
 
         has_role = await self.required_role(self, ctx)
         if not has_role:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
         if not valid:
-            running_commands.remove(ctx.author)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
         obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
@@ -69,9 +69,9 @@ class DownloadCommand(commands.Cog, Helpers):
 
                         actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
 
-                    if str(reaction.emoji) in self.dict_numbers:
+                    if str(reaction.emoji) in CHOOSE_NUMBER:
                         try:
-                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            offset = (self.actual_page * 10) + int(CHOOSE_NUMBER[str(reaction.emoji)]) - 1
                             await ctx.send(file=discord.File(fp=f"{config.path}/{hashcodes[offset]}.mp3",
                                                              filename=f"{audios[offset]}.mp3"), delete_after=5)
                         except IndexError as IE:
@@ -81,7 +81,7 @@ class DownloadCommand(commands.Cog, Helpers):
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                               color=0xFC65E1)
                         await ctx.send(embed=embed, delete_after=10)
-                        running_commands.remove(ctx.author)
+                        RUNNING_COMMAND.remove(ctx.author)
                         return
 
             except asyncio.TimeoutError:
@@ -91,7 +91,7 @@ class DownloadCommand(commands.Cog, Helpers):
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  'List is empty')
-        running_commands.remove(ctx.author)
+        RUNNING_COMMAND.remove(ctx.author)
 
 
 async def setup(client):
