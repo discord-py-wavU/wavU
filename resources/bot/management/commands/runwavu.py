@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand
 import config
 import content
 from config import client
-from resources.bot.helpers import Helpers
+from resources.bot.helpers import Message
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -116,7 +116,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         msg_name = f"I'm sorry {ctx.message.author.name} :cry:"
         msg_value = f"{error}"
-        await Helpers.embed_msg(ctx, msg_name, msg_value, 30)
+        await Message.embed_msg(ctx, msg_name, msg_value, 30)
 
 
 class Command(BaseCommand):

@@ -27,7 +27,7 @@ class Helpers:
         self.page_len = 0
         self.actual_page = 0
         self.emb_msg = None
-        self.view = None
+        self.view = discord.ui.View()
         self.interaction = None
 
     @staticmethod
@@ -313,14 +313,14 @@ class Message(Helpers):
 
     # Build message methods
 
-    async def show_status_list(self, ctx, objects):
+    async def show_status_list(self, ctx, msg):
         list_songs = ""
-        for index, obj in enumerate(objects):
+        for index, obj in enumerate(self.list_audios[self.actual_page]):
             emoji = ":white_check_mark:" if obj[1] else ":x:"
             list_songs = list_songs + f"{str(index + 1)}. {obj[0]} {emoji}\n"
         if list_songs:
             msg_name = f"List .mp3 files:"
-            msg_value = f"{list_songs}"
+            msg_value = f"{msg}{list_songs}"
             await self.embed_msg_with_view(ctx, msg_name, msg_value)
 
     @staticmethod
@@ -352,7 +352,7 @@ class Message(Helpers):
         embed.add_field(name=name,
                         value=value,
                         inline=False)
-        return await ctx.send(embed=embed, delete_after=delete)
+        await ctx.send(embed=embed, delete_after=delete)
     
     # Edit message methods
     
@@ -411,7 +411,7 @@ class Button(Helpers):
 
         return actual
 
-class Status(Helpers):
+class Status(Button):
 
     def __init__(self):
         super().__init__()

@@ -10,7 +10,7 @@ from discord.ext import commands
 from resources.bot.helpers import Message, Button, Status, Checker, RUNNING_COMMAND
 
 
-class OffCommand(commands.Cog, Message, Button, Status, Checker):
+class OffCommand(commands.Cog, Message, Status, Checker):
 
     def __init__(self, client):
         super().__init__()
@@ -47,9 +47,8 @@ class OffCommand(commands.Cog, Message, Button, Status, Checker):
             self.page_len = len(self.list_audios)
 
             msg = "Choose a number to disabled a file\n"
-            self.view = discord.ui.View()
             await self.button_interactions()
-            await self.show_status_list(ctx, self.list_audios[0])
+            await self.show_status_list(ctx, msg)
 
             def check(user):
                 return user != self.client.user and user.guild.id == ctx.guild.id
