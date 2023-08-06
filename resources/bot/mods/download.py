@@ -49,8 +49,7 @@ class DownloadCommand(commands.Cog, CommandBase):
 
                     if isinstance(self.interaction, int):
                         try:
-                            offset = (self.actual_page * 10) + \
-                                self.interaction - 1
+                            offset = (self.actual_page * 10) + self.interaction - 1
                             await btn.response.send_message(
                                 file=discord.File(fp=f"{config.path}/{hashcodes[offset]}.mp3",
                                                   filename=f"{audios[offset]}.mp3"),
