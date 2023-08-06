@@ -1,19 +1,18 @@
-# -*- coding: utf-8 -*-
-
-import asyncio
+# Standard imports
 import logging
-
+# Discord imports
 import discord.errors
 from discord.ext import commands
-
+# Own imports
 import content
+# Project imports
 from resources.audio.models import Audio, AudioInServer
-from resources.bot.helpers import Helpers
+from resources.bot.command_base import CommandBase
 from resources.entity.models import Entity
 from resources.server.models import Server
 
 
-class Management(commands.Cog, Helpers):
+class Management(commands.Cog, CommandBase):
 
     def __init__(self, client):
         super().__init__()
