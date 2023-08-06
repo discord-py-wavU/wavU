@@ -1,18 +1,19 @@
-# -*- coding: utf-8 -*-
-
+# Standard imports
 import asyncio
 import logging
 import os
-
-import discord
+# Extras imports
 from asgiref.sync import sync_to_async
+# Discord imports
+import discord
 from discord.ext import commands
-
+# Own imports
 import config
-from resources.bot.helpers import Helpers, RUNNING_COMMAND
+# Project imports
+from resources.bot.command_base import CommandBase, RUNNING_COMMAND
 
 
-class DeleteCommand(commands.Cog, Helpers):
+class DeleteCommand(commands.Cog, CommandBase):
 
     def __init__(self, client):
         super().__init__()
@@ -22,7 +23,6 @@ class DeleteCommand(commands.Cog, Helpers):
         obj_filtered = obj.filter(audio__hashcode=hashcode)
         obj_filtered.delete()
 
-    @staticmethod
     async def delete_obj_and_file(self, obj, hashcode):
         try:
             os.remove(f"{config.path}/{hashcode}.mp3")
@@ -34,100 +34,63 @@ class DeleteCommand(commands.Cog, Helpers):
     @commands.command(aliases=['Delete', 'del', 'Del', 'remove', 'Remove', 'rm', 'Rm', 'RM'])
     async def delete(self, ctx, arg=None):
 
-        if not await self.check_if_running(self, ctx):
+        if not await self.user_input_valid(ctx, arg):
             return
 
-        has_role = await self.required_role(self, ctx)
-        if not has_role:
-            RUNNING_COMMAND.remove(ctx.author)
-            return
-
-        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
-        if not valid:
-            RUNNING_COMMAND.remove(ctx.author)
-            return
-
-        obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
-
-        loop = self.client.loop or asyncio.get_event_loop()
+        objects, audios, hashcodes = await self.get_audios(ctx, arg)
 
         if audios:
-            actual_page = 0
             self.actual_page = 0
 
             self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
             self.page_len = len(self.list_audios)
 
-            msg = f"Choose a number to delete a file\n"
-            emb_msg = await self.show_audio_list(self, ctx, self.list_audios[0], msg)
+            self.view = discord.ui.View()
+            self.instruction_msg = f"Choose a _number_ to change the file volume\n"
+            await self.button_interactions()
+            await self.show_audio_list(ctx)
 
-            def check(reaction, user):
+            def check(user):
                 return user != self.client.user and user.guild.id == ctx.guild.id
-
-            task_core_reaction = loop.create_task(self.core_reactions(self, emb_msg, actual_page))
 
             try:
                 while True:
-                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=600)
+                    btn = await self.client.wait_for('interaction', check=check, timeout=600)
+                    await self.get_interaction(btn)
 
-                    if reaction:
-                        if actual_page:
-                            await actual_page
-                        if task_core_reaction is not None:
-                            await task_core_reaction
-                        await asyncio.sleep(0.1)
-                        await emb_msg.remove_reaction(emoji=reaction.emoji, member=user)
+                    if self.interaction == 'right' or self.interaction == 'left':
+                        await self.move_page(btn)
 
-                    if user.id != ctx.message.author.id:
-                        continue
-
-                    if str(reaction.emoji) == "➡️" or str(reaction.emoji) == "⬅️":
-                        if actual_page:
-                            await actual_page
-                        if task_core_reaction is not None:
-                            await task_core_reaction
-                        actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
-
-                    if str(reaction.emoji) in CHOOSE_NUMBER:
-                        if actual_page:
-                            await actual_page
-                        if task_core_reaction is not None:
-                            await task_core_reaction
+                    if isinstance(self.interaction, int):
                         try:
-                            offset = (self.actual_page * 10) + int(CHOOSE_NUMBER[str(reaction.emoji)]) - 1
-                            await self.delete_obj_and_file(self, obj, hashcodes[offset])
+                            offset = (self.actual_page * 10) + self.interaction - 1
+                            await self.delete_obj_and_file(objects, hashcodes[offset])
                             audios.remove(audios[offset])
-                            prev_len = len(self.list_audios[self.actual_page])
+                            old_len = len(self.list_audios)
                             self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
-                            actual_len = len(self.list_audios[self.actual_page])
-                            self.page_len = len(self.list_audios)
-                        except IndexError as IE:
-                            logging.warning(IE)
-                            if self.actual_page:
-                                if not self.list_audios[self.actual_page]:
-                                    self.actual_page -= 1
-                                    self.page_len -= 1
-                                    actual_page = loop.create_task(
-                                        self.arrows_reactions(self, emb_msg, reaction, msg, True))
-                                    for ind in range(10):
-                                        await asyncio.sleep(0.1)
-                                        await emb_msg.add_reaction(CHOOSE_NUMBER[str(ind + 1)])
-                                continue
-                            else:
-                                await emb_msg.delete()
+                            is_first_page = self.actual_page == self.page_len - 1
+                            if self.list_audios and len(self.list_audios) + 1 == old_len and is_first_page:
+                                self.actual_page -= 1
+                                self.page_len -= 1
+                            elif not self.list_audios:
+                                await btn.response.defer()
+                                await self.emb_msg.delete()
                                 embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                                       color=0xFC65E1)
                                 await ctx.send(embed=embed, delete_after=10)
                                 RUNNING_COMMAND.remove(ctx.author)
                                 return
-                        if prev_len > actual_len:
-                            await emb_msg.remove_reaction(emoji=CHOOSE_NUMBER[str(actual_len + 1)],
-                                                          member=self.client.user)
+                            
+                            self.view.clear_items()
+                            await self.button_interactions()
+                            await self.edit_message()
+                            await btn.response.defer()
+                        except IndexError as IE:
+                            logging.warning(IE)
 
-                        msg = f"Choose a number to delete a file\n"
-                        await self.edit_message(self, emb_msg, msg)
-                    elif str(reaction.emoji) == '❌':
-                        await emb_msg.delete()
+                    elif self.interaction == 'cancel':
+                        await btn.response.defer()
+                        await self.emb_msg.delete()
                         embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
                                               color=0xFC65E1)
                         await ctx.send(embed=embed, delete_after=10)
@@ -137,7 +100,7 @@ class DeleteCommand(commands.Cog, Helpers):
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"Timeout!",
                                      'This command was cancelled', 10)
-                await emb_msg.delete()
+                await self.emb_msg.delete()
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
                                  'List is empty')

@@ -2,10 +2,10 @@
 
 from discord.ext import commands
 
-from resources.bot.helpers import Helpers
+from resources.bot.command_base import CommandBase
 
 
-class Status(commands.Cog, Helpers):
+class Status(commands.Cog, CommandBase):
 
     def __init__(self, client):
         super().__init__()
@@ -16,13 +16,13 @@ class Status(commands.Cog, Helpers):
 
         server_id = ctx.message.guild.id
 
-        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
+        valid = await self.valid_arg(ctx, arg)
         if not valid:
             return
 
-        objects, audios, hashcodes = await self.search_songs(self, ctx, arg)
+        objects, _, _ = await self.get_audios(ctx, arg)
 
-        if obj_type == "Server" and server_id != discord_id:
+        if self.obj_type == "Server" and server_id != self.discord_id:
             await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
                                  "You can't see other server status from here, please another argument", 30)
             return

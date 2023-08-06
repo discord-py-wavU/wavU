@@ -3,10 +3,10 @@
 from discord.ext import commands
 from discord.utils import get
 
-from resources.bot.helpers import Helpers
+from resources.bot.command_base import CommandBase
 
 
-class UnroleCommand(commands.Cog, Helpers):
+class UnroleCommand(commands.Cog, CommandBase):
 
     def __init__(self, client):
         super().__init__()
