@@ -200,9 +200,7 @@ class VoiceCommands(commands.Cog, CommandBase, Voice):
                     elif self.interaction == 'cancel':
                         await btn.response.defer()
                         await self.emb_msg.delete()
-                        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                              color=0xFC65E1)
-                        await ctx.send(embed=embed, delete_after=10)
+                        await self.add_special_buttons(ctx)
                         RUNNING_COMMAND.remove(ctx.author)
                         return
 

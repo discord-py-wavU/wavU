@@ -75,12 +75,10 @@ class DeleteCommand(commands.Cog, CommandBase):
                             elif not self.list_audios:
                                 await btn.response.defer()
                                 await self.emb_msg.delete()
-                                embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                                      color=0xFC65E1)
-                                await ctx.send(embed=embed, delete_after=10)
+                                await self.add_special_buttons(ctx)
                                 RUNNING_COMMAND.remove(ctx.author)
                                 return
-                            
+
                             self.view.clear_items()
                             await self.button_interactions()
                             await self.edit_message()

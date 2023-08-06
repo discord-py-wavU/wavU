@@ -8,6 +8,7 @@ from asgiref.sync import sync_to_async
 import discord
 # Own packages
 import config
+import content
 # Project packages
 from resources.audio.models import Audio, AudioInEntity, AudioInServer
 from resources.entity.models import Entity
@@ -134,6 +135,13 @@ class Message:
                         inline=False)
         self.emb_msg = await ctx.send(embed=embed, view=self.view, delete_after=delete)
 
+    async def embed_finish_msg(self, ctx, name: str, value: str, custom_view: discord.ui.View = None):
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=name,
+                        value=value,
+                        inline=False)
+        await ctx.send(embed=embed, view=custom_view)
+
     async def embed_msg(self, ctx, name: str, value: str, delete: int = None):
         embed = discord.Embed(color=0xFC65E1)
         embed.add_field(name=name,
@@ -165,6 +173,8 @@ class CommandBase(Query, Message):
         self.emb_msg = None
         self.view = None
         self.interaction = None
+        self.discord_id = None
+        self.server_id = None
 
     async def user_input_valid(self, ctx, arg=None):
 
@@ -194,19 +204,59 @@ class CommandBase(Query, Message):
         await self.add_interaction_buttons()
         await btn.response.defer()
 
+    async def add_special_buttons(self, ctx):
+
+        grey = discord.ButtonStyle.gray
+        button = discord.ui.Button
+        view = discord.ui.View()
+
+        view.add_item(
+            item=button(
+                style=grey,
+                label="Join Server",
+                url=content.server_link,
+                row=0
+            )
+        )
+        view.add_item(
+            item=button(
+                style=grey, label="Add me to your server",
+                url=content.invite_link,
+                row=1
+            )
+        )
+
+        username = ctx.message.author.name.capitalize()
+        title = f"Thanks {username} for using wavU :wave:"
+        await self.embed_finish_msg(ctx, title, "", view)
+
     # Button methods
 
     async def button_interactions(self):
 
+        audios_len = len(self.list_audios[self.actual_page])
         grey = discord.ButtonStyle.gray
         button = discord.ui.Button
 
-        self.view.add_item(item=button(style=grey, label="⬅️", custom_id="left"))
-        self.view.add_item(item=button(style=grey, label="❌", custom_id="cancel"))
-        self.view.add_item(item=button(style=grey, label="➡️", custom_id="right"))
+        arrow_rows = 2 if audios_len > 5 else 1
 
-        for ind in range(len(self.list_audios[self.actual_page])):
-            self.view.add_item(item=button(style=grey, label=CHOOSE_NUMBER[str(ind + 1)], custom_id=str(ind + 1)))
+        self.view.add_item(item=button(style=grey, label="⬅️", custom_id="left", row=arrow_rows))
+        self.view.add_item(item=button(style=grey, label="❌", custom_id="cancel", row=arrow_rows))
+        self.view.add_item(item=button(style=grey, label="➡️", custom_id="right", row=arrow_rows))
+
+        for ind in range(audios_len):
+            row = self.get_row(ind)
+            self.view.add_item(
+                item=button(
+                    style=grey,
+                    label=CHOOSE_NUMBER[str(ind + 1)],
+                    custom_id=str(ind + 1,),
+                    row=row
+                )
+            )
+
+    def get_row(self, ind):
+        return 0 if ind < 5 else 1
 
     async def add_interaction_buttons(self):
         prev = self.actual_page
@@ -254,12 +304,12 @@ class CommandBase(Query, Message):
             self.obj_type = "Member"
         return valid
 
-    async def valid_channel(self, ctx, arg, server_id):
+    async def valid_channel(self, ctx, arg):
         await self.get_id_from_mention(arg)
         valid = True
-        if not server_id:
-            server_id = ctx.guild.id
-        guild = self.client.get_guild(server_id)
+        if not self.server_id:
+            self.server_id = ctx.guild.id
+        guild = self.client.get_guild(self.server_id)
         voice_channels = guild.voice_channels
         name_channels_list = [voice_channel.name for voice_channel in voice_channels]
         if arg not in name_channels_list and not arg.isdigit():
@@ -282,8 +332,9 @@ class CommandBase(Query, Message):
 
         return valid
 
-    async def valid_arg(self, ctx, arg, server_id=None):
+    async def valid_arg(self, ctx, arg):
         if arg:
+            self.discord_id = arg
             name_channels_list = []
             valid = await self.valid_person(ctx, arg)
 
@@ -294,7 +345,7 @@ class CommandBase(Query, Message):
                     self.obj_type = "Server"
 
             if not valid:
-                valid = await self.valid_channel(ctx, arg, server_id)
+                valid = await self.valid_channel(ctx, arg)
                 if valid:
                     self.obj_type = "Channel"
             if str(self.discord_id) not in arg and name_channels_list and arg not in name_channels_list:
