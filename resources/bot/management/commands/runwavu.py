@@ -1,17 +1,19 @@
-# -*- coding: utf-8 -*-
+# Standard imports
 import asyncio
 import glob
 import logging
+# Extra imports
 from os.path import join, dirname, isfile, basename
-
+# Discord imports
 import discord.utils
 from discord.ext import commands
 from django.core.management.base import BaseCommand
-
-import config
+# Own imports
 import content
+import config
 from config import client
-from resources.bot.helpers import Message
+# Project imports
+from resources.bot.command_base import Message
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -38,6 +40,7 @@ async def help(ctx):
     embed.add_field(name=content.field_title_join, value=content.field_description_join, inline=False)
     await ctx.send(embed=embed)
 
+
 @staticmethod
 async def buttons(amount):
     view = discord.ui.View()
@@ -59,11 +62,11 @@ async def pepi(ctx):
     await btn.response.send_message("Button clicked")
 
     await ctx.send(f"You clicked {btn.data.get('custom_id')} button")
-    
+
     if await view.interaction_check(btn):
         await ctx.send("View is done")
 
- 
+
 @client.event
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))
@@ -116,7 +119,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         msg_name = f"I'm sorry {ctx.message.author.name} :cry:"
         msg_value = f"{error}"
-        await Message.embed_msg(ctx, msg_name, msg_value, 30)
+        await Message().embed_msg(ctx, msg_name, msg_value, 30)
 
 
 class Command(BaseCommand):
