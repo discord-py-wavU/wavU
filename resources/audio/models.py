@@ -1,10 +1,9 @@
+# Django imports
 from django.db import models
-
-import config
+from django.utils import timezone
+# Project imports
 from resources.server.models import Server
 from resources.entity.models import Entity
-
-from django.utils import timezone
 
 
 class Audio(models.Model):
@@ -18,6 +17,7 @@ class AudioInEntity(models.Model):
     enabled = models.BooleanField(default=True)
     volume = models.IntegerField(default=50, blank=False, null=False)
     name = models.CharField(default="", max_length=150, db_index=True)
+
 
 class AudioInServer(models.Model):
     audio = models.ForeignKey(Audio, on_delete=models.CASCADE, related_name="servers")
