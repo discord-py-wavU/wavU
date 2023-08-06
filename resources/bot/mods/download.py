@@ -27,7 +27,8 @@ class DownloadCommand(commands.Cog, CommandBase):
         if audios:
             self.actual_page = 0
 
-            self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
+            self.list_audios = [audios[i:i + 10]
+                                for i in range(0, len(audios), 10)]
             self.page_len = len(self.list_audios)
 
             self.view = discord.ui.View()
@@ -48,9 +49,13 @@ class DownloadCommand(commands.Cog, CommandBase):
 
                     if isinstance(self.interaction, int):
                         try:
-                            offset = (self.actual_page * 10) + self.interaction - 1
-                            await btn.response.send_message(file=discord.File(fp=f"{config.path}/{hashcodes[offset]}.mp3",
-                                                            filename=f"{audios[offset]}.mp3"), delete_after=5)
+                            offset = (self.actual_page * 10) + \
+                                self.interaction - 1
+                            await btn.response.send_message(
+                                file=discord.File(fp=f"{config.path}/{hashcodes[offset]}.mp3",
+                                                  filename=f"{audios[offset]}.mp3"),
+                                delete_after=5
+                            )
                         except IndexError as IE:
                             logging.warning(IE)
                     elif self.interaction == 'cancel':
