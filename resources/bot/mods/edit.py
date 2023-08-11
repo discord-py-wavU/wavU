@@ -66,7 +66,7 @@ class EditCommand(commands.Cog, CommandBase):
                     await self.get_interaction(btn)
 
                     if self.interaction == 'right' or self.interaction == 'left':
-                        await self.move_page(btn)
+                        await self.move_page(btn, ctx)
 
                     if isinstance(self.interaction, int):
                         try:
@@ -76,7 +76,7 @@ class EditCommand(commands.Cog, CommandBase):
                             await self.edit_obj_and_file(objects, hashcode, msg_name.content)
                             audios[offset] = msg_name.content
                             self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
-                            await self.edit_message()
+                            await self.edit_message(ctx)
                             await msg_name.delete()
                         except IndexError as IE:
                             logging.warning(IE)
@@ -90,6 +90,11 @@ class EditCommand(commands.Cog, CommandBase):
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"Timeout!",
                                      'This command was cancelled', 10)
+                await self.emb_msg.delete()
+            except Exception as e:
+                logging.warning(e)
+                await self.embed_msg(ctx, f"Error!",
+                                     f'Something went wrong: {e}', 10)
                 await self.emb_msg.delete()
         else:
             await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",

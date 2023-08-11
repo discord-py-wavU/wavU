@@ -106,17 +106,16 @@ class Message:
             emoji = ":white_check_mark:" if obj[1] else ":x:"
             list_songs = list_songs + f"{str(index + 1)}. {obj[0]} {emoji}\n"
         if list_songs:
-            msg_name = f"List .mp3 files:"
-            msg_value = f"{self.instruction_msg}{list_songs}"
+            msg_name = content.choose_number
+            msg_value = list_songs
             await self.embed_msg_with_view(ctx, msg_name, msg_value)
 
     async def show_audio_list(self, ctx):
         list_songs = ""
         for index, song in enumerate(self.list_audios[self.actual_page]):
             list_songs = list_songs + f"{str(index + 1)}. {song}\n"
-        list_songs = f"{list_songs}cancel"
-        msg_name = f"List .mp3 files:"
-        msg_value = f"{self.instruction_msg}{list_songs}"
+        msg_name = content.choose_number
+        msg_value = list_songs
         await self.embed_msg_with_view(ctx, msg_name, msg_value)
 
     # Send message methods
@@ -151,14 +150,16 @@ class Message:
 
     # Edit message methods
 
-    async def edit_message(self):
+    async def edit_message(self, ctx):
+        username = ctx.message.author.name.capitalize()
+        hey_msg = content.hey_msg.format(username)
         list_songs = ""
         for index, song in enumerate(self.list_audios[self.actual_page]):
             list_songs = list_songs + f"{str(index + 1)}. {song}\n"
-        list_songs = f"{list_songs}cancel"
+        list_songs = f"{list_songs}"
         embed = discord.Embed(color=0xFC65E1)
-        embed.add_field(name=f"List .mp3 files:",
-                        value=f"{self.instruction_msg}{list_songs}",
+        embed.add_field(name=hey_msg,
+                        value=f"{list_songs}",
                         inline=False)
 
         await self.emb_msg.edit(embed=embed, view=self.view)
@@ -200,8 +201,8 @@ class CommandBase(Query, Message):
         else:
             self.interaction = custom_id
 
-    async def move_page(self, btn):
-        await self.add_interaction_buttons()
+    async def move_page(self, btn, ctx):
+        await self.add_interaction_buttons(ctx)
         await btn.response.defer()
 
     async def add_special_buttons(self, ctx):
@@ -227,8 +228,8 @@ class CommandBase(Query, Message):
         )
 
         username = ctx.message.author.name.capitalize()
-        title = f"Thanks {username} for using wavU :wave:"
-        await self.embed_finish_msg(ctx, title, "", view)
+        thx_msg = content.thx_msg.format(username)
+        await self.embed_finish_msg(ctx, thx_msg, "", view)
 
     # Button methods
 
@@ -258,11 +259,11 @@ class CommandBase(Query, Message):
     def get_row(self, ind):
         return 0 if ind < 5 else 1
 
-    async def add_interaction_buttons(self):
+    async def add_interaction_buttons(self, ctx):
         prev = self.actual_page
         self.actual_page = await self.choose_direction()
 
-        await self.edit_message()
+        await self.edit_message(ctx)
 
         if prev != self.actual_page:
             self.view.clear_items()
@@ -283,9 +284,9 @@ class CommandBase(Query, Message):
         # Check if the user is in the set of running commands
 
         if ctx.author in RUNNING_COMMAND:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name} ",
-                                 "You cannot use more than one command at once, "
-                                 "please finish or cancel your current process", 30)
+            username = ctx.message.author.name.capitalize()
+            hey_msg = content.hey_msg.format(username)
+            await self.embed_msg(ctx, hey_msg, content.lock_value, 30)
             # Return False if the user is already running a command
             return False
         else:
@@ -306,6 +307,9 @@ class CommandBase(Query, Message):
 
     async def valid_channel(self, ctx, arg):
         await self.get_id_from_mention(arg)
+        username = ctx.message.author.name.capitalize()
+        sorry_msg = content.sorry_msg.format(username)
+        invalid_value = content.invalid_value.format(arg)
         valid = True
         if not self.server_id:
             self.server_id = ctx.guild.id
@@ -313,8 +317,7 @@ class CommandBase(Query, Message):
         voice_channels = guild.voice_channels
         name_channels_list = [voice_channel.name for voice_channel in voice_channels]
         if arg not in name_channels_list and not arg.isdigit():
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 f"This argument ({arg}) is not valid, please try again", 30)
+            await self.embed_msg(ctx, sorry_msg, invalid_value, 30)
             valid = False
         else:
             if arg.isdigit():
@@ -326,8 +329,7 @@ class CommandBase(Query, Message):
             else:
                 self.discord_id = voice_channels[name_channels_list.index(arg)].id
             if not self.discord_id:
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     f"This argument ({arg}) is not a valid id, please try again", 30)
+                await self.embed_msg(ctx, sorry_msg, invalid_value, 30)
                 valid = False
 
         return valid
@@ -349,8 +351,10 @@ class CommandBase(Query, Message):
                 if valid:
                     self.obj_type = "Channel"
             if str(self.discord_id) not in arg and name_channels_list and arg not in name_channels_list:
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     f"This format is wrong, please use **{config.prefix}help**", 30)
+                username = ctx.message.author.name.capitalize()
+                sorry_msg = content.sorry_msg.format(username)
+                wrong_value = content.wrong_value.format(config.prefix)
+                await self.embed_msg(ctx, sorry_msg, wrong_value, 30)
                 valid = False
                 self.obj_type = ""
                 RUNNING_COMMAND.remove(ctx.author)
@@ -362,6 +366,8 @@ class CommandBase(Query, Message):
         return valid
 
     async def valid_server(self, ctx, arg):
+        username = ctx.message.author.name.capitalize()
+        sorry_msg = content.sorry_msg.format(username)
         if arg.isdigit():
             guild = self.client.get_guild(int(arg))
             if guild:
@@ -371,14 +377,12 @@ class CommandBase(Query, Message):
             guilds = self.client.guilds
             name_guilds_list = [guild.name for guild in guilds]
             if arg not in name_guilds_list:
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     f"This is not a guild name, please try again", 30)
+                await self.embed_msg(ctx, sorry_msg, content.wrong_guild_id, 30)
                 return False
             else:
                 self.discord_id = guilds[name_guilds_list.index(arg)].id
             if not self.discord_id:
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     f"This guild id isn't valid, please try again", 30)
+                await self.embed_msg(ctx, sorry_msg, content.wrong_guild_name, 30)
                 return False
 
         return True
@@ -387,16 +391,17 @@ class CommandBase(Query, Message):
 
         if not guild:
             roles = ctx.message.author.roles
-            msg = f"You need _**FM**_ role to use this command.\n"
+            msg = content.need_fm_role
         else:
             roles = guild.get_member(ctx.message.author.id).roles
-            msg = f"You need _**FM**_ role on _**{guild.name}**_ to use this command.\n"
+            msg = content.diff_fm_role.format(guild.name)
 
         has_role = True
         if "FM" not in (roles.name for roles in roles):
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:", msg +
-                                 "Only members who have administrator permissions are able to assign _**FM**_ role.\n"
-                                 f"Command: \"**{config.prefix} role @mention**\"")
+            username = ctx.message.author.name.capitalize()
+            sorry_msg = content.sorry_msg.format(username)
+            admin_perm = content.admin_perm.format(config.prefix)
+            await self.embed_msg(ctx, sorry_msg, msg + admin_perm)
             has_role = False
             RUNNING_COMMAND.remove(ctx.author)
 

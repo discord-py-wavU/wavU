@@ -108,7 +108,7 @@ class VolumeCommand(commands.Cog, CommandBase):
                     await self.get_interaction(btn)
 
                     if self.interaction == 'right' or self.interaction == 'left':
-                        await self.move_page(btn)
+                        await self.move_page(btn, ctx)
 
                     if isinstance(self.interaction, int):
                         try:

@@ -1,5 +1,50 @@
 import config
 
+# Message content
+
+thx_msg = "Thanks %s for using wavU :wave:"
+hey_msg = "Hey %s"
+empty_list = 'List is empty'
+timeout = "Time is up!"
+lock_value = "You cannot use more than one command at once, " + \
+             "please finish or cancel your current process"
+sorry_msg = "I'm sorry %s :cry:"
+invalid_value = "This argument (%s) is not valid, please try again"
+wrong_value = "This format is wrong, please use **%shelp**"
+wrong_guild_id = "This is not a guild name, please try again"
+wrong_guild_name = "This guild id is not valid, please try again"
+
+need_fm_role = "You need to have FM role to use this command"
+diff_fm_role = "You need _**FM**_ role on _**%s**_ to use this command.\n"
+admin_perm = "Only members who have administrator permissions are able to assign _**FM**_ role.\n" + \
+             "Command: \"**%s role @mention**\""
+
+choose_number = "Choose _one_ number at a time:"
+
+longer_video = "The entire video is longer than 10 seconds, please try again"
+incorrect_format = "Incorrect format, please try again"
+audio_len = "The audio segments should not surpass the file length, please try again"
+audio_size = "This size of the audio is too large, **wavU** could not add it"
+audio_unavailable = "The video was unavailable or does not exist, **wavU** could not add it"
+check_audio = "The file duration is longer than 10 seconds or lower than 0, please try again"
+
+cut_segment = "I need the audio segment to cut your audio\n" + \
+              "Format: (**MM:SS:MS** to **MM:SS:MS**)\n" + \
+              "MM = Minutes, SS = Seconds, MS = Milliseconds.\n" + \
+              "If you want the entire audio type *entire*\n" + \
+              "This segment must not be longer than 10 seconds."
+
+working_file = "I'm working on your file"
+processing_file = "Processing file... :gear: :tools:"
+wait_sec = "Please wait a few seconds :hourglass:"
+accept_file = "Would you like to keep this file?"
+response_file_accept = "Type **yes** to keep it or **no** to cut it again, or **cancel**"
+
+cant_copy = "You can't copy an audio in the same container"
+cant_direct_copy = "You can't copy an audio to _common_ server files if server destination is different"
+
+# Help command
+
 img_link = "https://cdn.discordapp.com/attachments/721702337319665724/813869073388666921/WavU_b.png"
 invite_link = "https://discord.com/oauth2/authorize?client_id=379158774159507459&scope=bot&permissions=268435496"
 server_link = "https://discord.gg/qq6nQtGsyJ"

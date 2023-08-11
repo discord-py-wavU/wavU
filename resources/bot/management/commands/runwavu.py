@@ -117,7 +117,8 @@ async def ext(ctx, arg=None):
 @client.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        msg_name = f"I'm sorry {ctx.message.author.name} :cry:"
+        username = ctx.message.author.name.capitalize()
+        msg_name = content.sorry_msg.format(username)
         msg_value = f"{error}"
         await Message().embed_msg(ctx, msg_name, msg_value, 30)
 

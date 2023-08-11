@@ -46,7 +46,7 @@ class DeleteCommand(commands.Cog, CommandBase):
             self.page_len = len(self.list_audios)
 
             self.view = discord.ui.View()
-            self.instruction_msg = f"Choose a _number_ to change the file volume\n"
+            self.instruction_msg = f"Choose a _number_ to delete \n"
             await self.button_interactions()
             await self.show_audio_list(ctx)
 
@@ -59,7 +59,7 @@ class DeleteCommand(commands.Cog, CommandBase):
                     await self.get_interaction(btn)
 
                     if self.interaction == 'right' or self.interaction == 'left':
-                        await self.move_page(btn)
+                        await self.move_page(btn, ctx)
 
                     if isinstance(self.interaction, int):
                         try:
@@ -81,7 +81,7 @@ class DeleteCommand(commands.Cog, CommandBase):
 
                             self.view.clear_items()
                             await self.button_interactions()
-                            await self.edit_message()
+                            await self.edit_message(ctx)
                             await btn.response.defer()
                         except IndexError as IE:
                             logging.warning(IE)

@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-
-
+# Discord imports
 from discord.ext import commands
-
+# Own imports
+import content
+# Project imports
 from resources.bot.command_base import CommandBase
 
 
@@ -23,6 +24,7 @@ class Status(commands.Cog, CommandBase):
         objects, _, _ = await self.get_audios(ctx, arg)
 
         if self.obj_type == "Server" and server_id != self.discord_id:
+
             await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:",
                                  "You can't see other server status from here, please another argument", 30)
             return

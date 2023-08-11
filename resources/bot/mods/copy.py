@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 # Own imports
 import config
+import content
 # Project imports
 from resources.audio.models import Audio, AudioInServer, AudioInEntity
 from resources.bot.command_base import CommandBase, RUNNING_COMMAND
@@ -114,7 +115,7 @@ class CopyCommand(commands.Cog, CommandBase):
                     await self.get_interaction(btn)
 
                     if self.interaction == 'right' or self.interaction == 'left':
-                        await self.move_page(btn)
+                        await self.move_page(btn, ctx)
 
                     if isinstance(self.interaction, int):
                         try:
@@ -143,17 +144,22 @@ class CopyCommand(commands.Cog, CommandBase):
                                      'This command was cancelled', 10)
                 await self.emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 'List is empty')
+            username = ctx.message.author.name.capitalize()
+            hey_msg = content.hey_msg.format(username)
+            await self.embed_msg(ctx, hey_msg, content.empty_list)
         RUNNING_COMMAND.remove(ctx.author)
 
     async def user_input_valid(self, ctx, arg=None, arg2=None, arg3=None):
+
+        username = ctx.message.author.name.capitalize()
+        sorry_msg = content.sorry_msg.format(username)
+
         if not await super().user_input_valid(ctx, arg):
             return
 
         if not arg or not arg2:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 f"This format is wrong, please use **{config.prefix}help**", 30)
+            wrong_value = content.wrong_value.format(config.prefix)
+            await self.embed_msg(ctx, sorry_msg, wrong_value, 30)
             RUNNING_COMMAND.remove(ctx.author)
             return
 
@@ -163,15 +169,12 @@ class CopyCommand(commands.Cog, CommandBase):
             return
 
         if self.discord_id_src and self.discord_id_src == self.discord_id_dest and self.server_id == ctx.guild.id:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 f"You can't copy an audio in the same container", 30)
+            await self.embed_msg(ctx, sorry_msg, content.cant_copy, 30)
             RUNNING_COMMAND.remove(ctx.author)
             return
 
         if self.obj_type_dest == "Server" and self.discord_id_dest and self.discord_id_dest != self.server_id:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 f"You can't copy an audio to _common_ "
-                                 f"server files if server destination is different", 30)
+            await self.embed_msg(ctx, sorry_msg, content.cant_direct_copy, 30)
             RUNNING_COMMAND.remove(ctx.author)
             return
 
