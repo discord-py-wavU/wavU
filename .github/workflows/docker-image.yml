@@ -25,5 +25,5 @@ jobs:
         docker build --file ./Dockerfile -t wavu .
         docker stop wavu
         docker container prune -f
-        docker run --network="host" -d -v /Users/facub/Desktop/Server/wavU/audios:/app/audio wavu
+        docker run --network="host" -d -v c:/Users/facub/Desktop/Server/wavU/audios:/app/audio wavu
         docker image prune -f
