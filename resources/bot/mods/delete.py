@@ -9,6 +9,7 @@ import discord
 from discord.ext import commands
 # Own imports
 import config
+import content
 # Project imports
 from resources.bot.command_base import CommandBase, RUNNING_COMMAND
 
@@ -100,8 +101,8 @@ class DeleteCommand(commands.Cog, CommandBase):
                                      'This command was cancelled', 10)
                 await self.emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 'List is empty')
+            username = ctx.message.author.name.capitalize()
+            await self.embed_msg(ctx, content.hey_msg.format(username), content.empty_list)
         RUNNING_COMMAND.remove(ctx.author)
 
 

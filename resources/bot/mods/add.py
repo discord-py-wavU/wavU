@@ -45,7 +45,7 @@ class AddCommand(commands.Cog, CommandBase):
         await self.embed_msg(ctx, name_msg, title_msg, 30)
 
         username = ctx.message.author.name.capitalize()
-        sorry_msg = content.sorry_msg(username)
+        sorry_msg = content.sorry_msg.format(username)
 
         # Function to check message content
         def check(m):

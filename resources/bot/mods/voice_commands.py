@@ -8,6 +8,7 @@ from discord.ext import commands
 from discord.utils import get
 # Own imports
 import config
+import content
 # Project imports
 from resources.audio.models import AudioInServer, AudioInEntity
 from resources.entity.models import Entity
@@ -209,8 +210,8 @@ class VoiceCommands(commands.Cog, CommandBase, Voice):
                                      'This command was cancelled', 600)
                 await self.emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 'List is empty')
+            username = ctx.message.author.name.capitalize()
+            await self.embed_msg(ctx, content.hey_msg.format(username), content.empty_list)
         RUNNING_COMMAND.remove(ctx.author)
 
     @commands.command(aliases=['shutup', 'disconnect', 'disc', 'Shutup', 'Stop', 'Disconnect', 'Disc'])

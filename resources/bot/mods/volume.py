@@ -6,6 +6,8 @@ from asgiref.sync import sync_to_async
 # Discord imports
 import discord
 from discord.ext import commands
+# Own imports
+import content
 # Project imports
 from resources.bot.command_base import CommandBase, RUNNING_COMMAND
 
@@ -65,7 +67,7 @@ class VolumeCommand(commands.Cog, CommandBase):
 
                 if float(0) <= float(msg_volume.content) <= float(100):
                     await self.set_volume_obj_and_file(volume_objs, msg_volume.content)
-                    await self.embed_msg(ctx, f"{ctx.message.author.name}:",
+                    await self.embed_msg(ctx, f"{ctx.message.author.name.capitalize()}:",
                                          f'**{audios[offset]} has been changed to** '
                                          f'**{str(msg_volume.content)}**', 10)
                     await msg_volume.delete()
@@ -129,8 +131,8 @@ class VolumeCommand(commands.Cog, CommandBase):
                                      'This command was cancelled', 10)
                 await self.emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 'List is empty')
+            username = ctx.message.author.name.capitalize()
+            await self.embed_msg(ctx, content.hey_msg.format(username), content.empty_list)
         RUNNING_COMMAND.remove(ctx.author)
 
 

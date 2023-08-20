@@ -51,22 +51,6 @@ async def buttons(amount):
     return view
 
 
-@client.command()
-async def pepi(ctx):
-    await ctx.send(f"Hi We're glad you're here!")
-
-    view = await buttons(5)
-    await ctx.send("This is a test", view=view)
-
-    btn = await client.wait_for('interaction', timeout=20)
-    await btn.response.send_message("Button clicked")
-
-    await ctx.send(f"You clicked {btn.data.get('custom_id')} button")
-
-    if await view.interaction_check(btn):
-        await ctx.send("View is done")
-
-
 @client.event
 async def on_ready():
     await client.change_presence(status=config.status, activity=discord.Game(config.game))

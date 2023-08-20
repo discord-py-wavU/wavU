@@ -83,8 +83,8 @@ class OffCommand(commands.Cog, CommandBase):
                                      f'Something went wrong: {e}', 10)
                 await self.emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 'List is empty')
+            username = ctx.message.author.name.capitalize()
+            await self.embed_msg(ctx, content.hey_msg.format(username), content.empty_list)
         RUNNING_COMMAND.remove(ctx.author)
 
     async def add_interaction_buttons(self, ctx):

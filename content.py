@@ -2,22 +2,22 @@ import config
 
 # Message content
 
-thx_msg = "Thanks %s for using wavU :wave:"
-hey_msg = "Hey %s"
+thx_msg = "Thanks {} for using wavU :wave:"
+hey_msg = "Hey {}"
 empty_list = 'List is empty'
 timeout = "Time is up!"
 lock_value = "You cannot use more than one command at once, " + \
              "please finish or cancel your current process"
-sorry_msg = "I'm sorry %s :cry:"
-invalid_value = "This argument (%s) is not valid, please try again"
-wrong_value = "This format is wrong, please use **%shelp**"
+sorry_msg = "I'm sorry {} :cry:"
+invalid_value = "This argument ({}) is not valid, please try again"
+wrong_value = "This format is wrong, please use **{}help**"
 wrong_guild_id = "This is not a guild name, please try again"
 wrong_guild_name = "This guild id is not valid, please try again"
 
 need_fm_role = "You need to have FM role to use this command"
-diff_fm_role = "You need _**FM**_ role on _**%s**_ to use this command.\n"
+diff_fm_role = "You need _**FM**_ role on _**{}**_ to use this command.\n"
 admin_perm = "Only members who have administrator permissions are able to assign _**FM**_ role.\n" + \
-             "Command: \"**%s role @mention**\""
+             "Command: \"**{} role @mention**\""
 
 choose_number = "Choose _one_ number at a time:"
 
