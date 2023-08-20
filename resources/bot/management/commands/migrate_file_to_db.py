@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
-
-import hashlib
+# Standard imports
 import os
+# Extra imports
+import hashlib
 import shutil
-
+# Django imports
 from django.core.management.base import BaseCommand
-
-import config
+# Project imports
 from resources.audio.models import AudioInEntity, AudioInServer, Audio
 from resources.entity.models import Entity
 from resources.server.models import Server

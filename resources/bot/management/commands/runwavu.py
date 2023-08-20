@@ -1,19 +1,21 @@
-# -*- coding: utf-8 -*-
+# Standard imports
 import asyncio
 import glob
 import logging
+# Extra imports
 from os.path import join, dirname, isfile, basename
-
+# Discord imports
 import discord.utils
 from discord.ext import commands
 from django.core.management.base import BaseCommand
-
-import config
+# Own imports
 import content
+import config
 from config import client
-from resources.bot.helpers import Helpers
+# Project imports
+from resources.bot.command_base import Message
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 @client.command(aliases=['Help'])
@@ -37,6 +39,16 @@ async def help(ctx):
     embed.add_field(name=content.field_title_invite, value=content.field_description_invite, inline=False)
     embed.add_field(name=content.field_title_join, value=content.field_description_join, inline=False)
     await ctx.send(embed=embed)
+
+
+@staticmethod
+async def buttons(amount):
+    view = discord.ui.View()
+    style = discord.ButtonStyle.gray
+    for i in range(amount):
+        item = discord.ui.Button(style=style, label=str(i), custom_id=str(i))
+        view.add_item(item=item)
+    return view
 
 
 @client.event
@@ -89,8 +101,10 @@ async def ext(ctx, arg=None):
 @client.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        await Helpers.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                f"{error}", 30)
+        username = ctx.message.author.name.capitalize()
+        msg_name = content.sorry_msg.format(username)
+        msg_value = f"{error}"
+        await Message().embed_msg(ctx, msg_name, msg_value, 30)
 
 
 class Command(BaseCommand):

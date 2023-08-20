@@ -1,16 +1,19 @@
-# -*- coding: utf-8 -*-
-
+# Standard imports
 import asyncio
 import logging
-
+# Discord imports
 import discord
+# Extra imports
 from asgiref.sync import sync_to_async
+# Discord imports
 from discord.ext import commands
+# Own imports
+import content
+# Project imports
+from resources.bot.command_base import CommandBase, RUNNING_COMMAND
 
-from resources.bot.helpers import Helpers, running_commands
 
-
-class OffCommand(commands.Cog, Helpers):
+class OffCommand(commands.Cog, CommandBase):
 
     def __init__(self, client):
         super().__init__()
@@ -24,86 +27,89 @@ class OffCommand(commands.Cog, Helpers):
     @commands.command(alieses=['Off'])
     async def off(self, ctx, arg=None):
 
-        if not await self.check_if_running(self, ctx):
+        if not await self.user_input_valid(ctx, arg):
             return
 
-        has_role = await self.required_role(self, ctx)
-        if not has_role:
-            running_commands.remove(ctx.author)
-            return
-
-        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
-        if not valid:
-            running_commands.remove(ctx.author)
-            return
-
-        objects, audios, hashcodes = await self.search_songs(self, ctx, arg)
+        objects, audios, hashcodes = await self.get_audios(ctx, arg)
 
         tuple_obj = [[obj.name, obj.enabled] for obj in objects]
 
-        loop = self.client.loop or asyncio.get_event_loop()
-
         if audios:
-            actual_page = 0
             self.actual_page = 0
-
             self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
             self.page_len = len(self.list_audios)
 
-            msg = "Choose a number to disabled a file\n"
-            emb_msg = await self.show_status_list(self, ctx, self.list_audios[0])
+            self.view = discord.ui.View()
+            self.instruction_msg = "Choose a number to disabled a file\n"
+            await self.button_interactions()
+            await self.show_status_list(ctx)
 
-            def check(reaction, user):
+            def check(user):
                 return user != self.client.user and user.guild.id == ctx.guild.id
-
-            task_core_reaction = loop.create_task(self.core_reactions(self, emb_msg, actual_page))
 
             try:
                 while True:
-                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=600)
-                    if reaction:
-                        await asyncio.sleep(0.1)
-                        await emb_msg.remove_reaction(emoji=reaction.emoji, member=user)
+                    btn = await self.client.wait_for('interaction', check=check, timeout=600)
+                    await self.get_interaction(btn)
 
-                    if user.id != ctx.message.author.id:
-                        continue
+                    if self.interaction == 'right' or self.interaction == 'left':
+                        await self.move_page(btn, ctx)
 
-                    if str(reaction.emoji) == "➡️" or str(reaction.emoji) == "⬅️":
-                        if actual_page:
-                            await actual_page
-                        if task_core_reaction is not None:
-                            await task_core_reaction
-
-                        actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg, False, True))
-
-                    if str(reaction.emoji) in self.dict_numbers:
+                    if isinstance(self.interaction, int):
                         try:
-                            offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                            offset = (self.actual_page * 10) + self.interaction - 1
                             hashcode = hashcodes[offset]
                             await self.disable_audio(objects, hashcode)
-                            await self.embed_msg(ctx, f"{ctx.message.author.name}:",
-                                                 f'**{audios[offset]}** has been _**disabled**_', 5)
                             tuple_obj[offset][1] = False
                             self.list_audios = [tuple_obj[i:i + 10] for i in range(0, len(tuple_obj), 10)]
-                            await self.edit_status_message(emb_msg, msg, self.list_audios[self.actual_page])
+                            await self.edit_message(ctx)
+                            await btn.response.defer()
                         except IndexError as IE:
                             logging.warning(IE)
-                    elif str(reaction.emoji) == '❌':
-                        await emb_msg.delete()
-                        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                              color=0xFC65E1)
-                        await ctx.send(embed=embed, delete_after=10)
-                        running_commands.remove(ctx.author)
+                    elif self.interaction == 'cancel':
+                        await btn.response.defer()
+                        await self.emb_msg.delete()
+                        await self.add_special_buttons(ctx)
+                        RUNNING_COMMAND.remove(ctx.author)
                         return
 
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"Timeout!",
                                      'This command was cancelled', 10)
-                await emb_msg.delete()
+                await self.emb_msg.delete()
+            except Exception as e:
+                logging.warning(e)
+                await self.embed_msg(ctx, f"Error!",
+                                     f'Something went wrong: {e}', 10)
+                await self.emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 'List is empty')
-        running_commands.remove(ctx.author)
+            username = ctx.message.author.name.capitalize()
+            await self.embed_msg(ctx, content.hey_msg.format(username), content.empty_list)
+        RUNNING_COMMAND.remove(ctx.author)
+
+    async def add_interaction_buttons(self, ctx):
+        prev = self.actual_page
+        self.actual_page = await self.choose_direction()
+
+        await self.edit_message(ctx)
+
+        if prev != self.actual_page:
+            self.view.clear_items()
+            await self.button_interactions()
+            await self.emb_msg.edit(view=self.view)
+
+    async def edit_message(self, ctx):
+        username = ctx.message.author.name.capitalize()
+        hey_msg = content.hey_msg.format(username)
+        list_songs = ""
+        for index, obj in enumerate(self.list_audios[self.actual_page]):
+            emoji = ":white_check_mark:" if obj[1] else ":x:"
+            list_songs = list_songs + f"{str(index + 1)}. {obj[0]} {emoji}\n"
+        embed = discord.Embed(color=0xFC65E1)
+        embed.add_field(name=hey_msg,
+                        value=f"{list_songs}",
+                        inline=False)
+        await self.emb_msg.edit(embed=embed)
 
 
 async def setup(client):

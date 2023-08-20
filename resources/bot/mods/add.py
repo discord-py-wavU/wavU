@@ -1,28 +1,120 @@
-# -*- coding: utf-8 -*-
-
+# Standard packages
 import asyncio
-import functools
-import hashlib
 import logging
+import requests
+import functools
 import os
 from os import stat
-
-import discord
+# Extras packages
+import hashlib
 import mutagen
-import requests
 import youtube_dl
-from discord.ext import commands
 from pydub import AudioSegment
-
+# Own packages
 import config
-from resources.bot.helpers import Helpers, running_commands
+import content
+# Discord packages
+import discord
+from discord.ext import commands
+# Project packages
+from resources.audio.models import Audio, AudioInEntity, AudioInServer
+from resources.entity.models import Entity
+from resources.server.models import Server
+from resources.bot.command_base import CommandBase, RUNNING_COMMAND
 
 
-class AddCommand(commands.Cog, Helpers):
+class AddCommand(commands.Cog, CommandBase):
 
     def __init__(self, client):
         super().__init__()
         self.client = client
+
+    @commands.command(aliases=['a', 'Add'])
+    async def add(self, ctx, arg: str = None, arg2: str = None):
+
+        # Discord async loop
+        loop = self.client.loop or asyncio.get_event_loop()
+        username = ctx.message.author.name.capitalize()
+
+        if not await self.user_input_valid(ctx, arg, arg2):
+            return
+
+        # Embed message to member
+        name_msg = f"Hi {username}! Glad to see you :heart_eyes:"
+        title_msg = "Please, upload an **audio** file, **youtube link** or type **cancel**"
+        await self.embed_msg(ctx, name_msg, title_msg, 30)
+
+        username = ctx.message.author.name.capitalize()
+        sorry_msg = content.sorry_msg.format(username)
+
+        # Function to check message content
+        def check(m):
+            return (str(m.content).lower() == "cancel" or m.attachments or
+                    'youtube' in m.content or 'youtu.be' in m.content) \
+                   and (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
+
+        try:
+            # Waiting for a message with check
+            msg = await self.client.wait_for('message', check=check, timeout=600)
+
+            # Command cancelled by member
+            if str(msg.content).lower() == "cancel":
+                username = ctx.message.author.name.capitalize()
+                thx_msg = content.thx_msg.format(username)
+                await self.embed_msg(ctx, thx_msg,
+                                     "Nothing has been **added**", 30)
+                RUNNING_COMMAND.remove(ctx.author)
+                return
+
+            # Member sent a youtube link
+            if 'youtube' in msg.content or 'youtu.be' in msg.content:
+                await self.embed_msg(ctx, content.processing_file, content.wait_sec, 60)
+
+                # Download, convert to mp3 and get info about file
+                file_title, file_duration = await self.get_file_info(self, ctx, msg.content)
+
+                if file_title is None or file_duration is None:
+                    RUNNING_COMMAND.remove(ctx.author)
+                    return
+
+                await self.link_file(ctx, arg, file_title, file_duration)
+
+                RUNNING_COMMAND.remove(ctx.author)
+                return
+
+            headers = {
+                'User-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0'
+            }
+
+            request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=False)
+            filename = msg.attachments[0].filename
+            mp3 = filename.split('.')
+            path = f"{config.path}/{filename}.mp3"
+            filename = filename.replace(".mp3", "")
+
+            if mp3[len(mp3) - 1] == "mp3":
+                async with ctx.typing():
+                    fn = functools.partial(self.add_song, path, request_msg)
+                    await loop.run_in_executor(None, fn)
+
+                audio = mutagen.File(path)
+
+                hashcode = hashlib.md5(open(path, 'rb').read()).hexdigest()
+
+                if int(audio.info.length) < 10:
+                    await self.insert_file_db(ctx, arg, filename, hashcode)
+                    os.rename(path, f"{config.path}/{hashcode}.mp3")
+                else:
+                    title_msg = f"**{filename}** is longer than 10 seconds, **wavU** could not add it"
+                    await self.embed_msg(ctx, sorry_msg, title_msg, 60)
+                    os.remove(path)
+            else:
+                await self.embed_msg(ctx, sorry_msg,
+                                     f"This is not a **.mp3** file, **wavU** could not add it", 30)
+
+        except asyncio.TimeoutError:
+            await self.embed_msg(ctx, sorry_msg, content.timeout, 15)
+        RUNNING_COMMAND.remove(ctx.author)
 
     @staticmethod
     def time_parser(times):
@@ -41,8 +133,10 @@ class AddCommand(commands.Cog, Helpers):
 
         return time
 
-    @staticmethod
     async def valid_format(self, ctx, msg_time, file_duration):
+
+        username = ctx.message.author.name.capitalize()
+        sorry_msg = content.sorry_msg(username)
 
         is_valid_format = False
         begin_times = 0
@@ -54,12 +148,10 @@ class AddCommand(commands.Cog, Helpers):
             if 10 > file_duration:
                 return 0, file_duration, True
             else:
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     "The entire video is longer than 10 seconds, please try again", 60)
+                await self.embed_msg(ctx, sorry_msg, content.longer_video, 60)
                 return begin_times, end_times, is_valid_format
         else:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 "Incorrect format, please try again", 60)
+            await self.embed_msg(ctx, sorry_msg, content.incorrect_format, 60)
             return begin_times, end_times, is_valid_format
 
         begin = message[0].split(':')
@@ -77,19 +169,19 @@ class AddCommand(commands.Cog, Helpers):
             end_times = self.time_parser(list_times_end)
 
         else:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 "Incorrect format, please try again", 60)
+            await self.embed_msg(ctx, sorry_msg, content.incorrect_format, 60)
             return begin_times, end_times, is_valid_format
 
         if begin_times > file_duration or end_times > file_duration:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 "The audio segments should not surpass the file length, please try again", 60)
+            await self.embed_msg(ctx, sorry_msg, content.audio_len, 60)
             return begin_times, end_times, is_valid_format
 
         return begin_times, end_times, True
 
-    @staticmethod
     async def file_size(self, ctx, file_title):
+
+        username = ctx.message.author.name.capitalize()
+        sorry_msg = content.sorry_msg(username)
 
         max_file_size = 8 * 1024 * 1024
         isvalid = True
@@ -97,8 +189,7 @@ class AddCommand(commands.Cog, Helpers):
         path = f"{config.path}/{str(file_title)}.mp3"
 
         if max_file_size < stat(path).st_size:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 "This size of the audio is too large, **wavU** could not add it", 30)
+            await self.embed_msg(ctx, sorry_msg, content.audio_size, 30)
             os.remove(path)
             isvalid = False
 
@@ -106,6 +197,9 @@ class AddCommand(commands.Cog, Helpers):
 
     @staticmethod
     async def get_file_info(self, ctx, url):
+
+        username = ctx.message.author.name.capitalize()
+        sorry_msg = content.sorry_msg(username)
 
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -132,8 +226,7 @@ class AddCommand(commands.Cog, Helpers):
             return file_title, file_duration
         except Exception as e:
             logging.info(e)
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 "The video was unavailable or does not exist, **wavU** could not add it", 30)
+            await self.embed_msg(ctx, sorry_msg, content.audio_unavailable, 30)
             return None, None
 
     @staticmethod
@@ -156,20 +249,14 @@ class AddCommand(commands.Cog, Helpers):
             is_confirmed = True
         elif str(msg_confirm.content).lower() in "no":
             os.remove(f"{config.path}/{hashcode}_trim.mp3")
-            await self.embed_msg(ctx, f"Let's try again {ctx.message.author.name}",
-                                 "I need the audio segment to cut your audio\n"
-                                 "Format: (**MM:SS:MS** to **MM:SS:MS**)\n"
-                                 "MM = Minutes, SS = Seconds, MS = Milliseconds.\n"
-                                 "If you want the entire audio type *entire*\n"
-                                 "This segment must not be longer than 10 seconds.", 60)
+            await self.embed_msg(ctx, f"Let's try again {ctx.message.author.name}", content.cut_segment, 60)
             is_no = True
 
         return is_confirmed, is_no
 
-    @staticmethod
     async def link_file(self, ctx, arg, file_title, file_duration, discord_id):
 
-        isvalid = await self.file_size(self, ctx, file_title)
+        isvalid = await self.file_size(ctx, file_title)
         if not isvalid:
             return
 
@@ -201,16 +288,10 @@ class AddCommand(commands.Cog, Helpers):
 
             break
 
-        await self.embed_msg(ctx, f"I'm working on your file",
-                             "Please wait a few seconds", 60)
+        await self.embed_msg(ctx, content.working_file, content.wait_sec, 60)
         await ctx.send(file=discord.File(fp=f"{config.path}/{hashcode}.mp3",
                                          filename=f"{msg_name.content}.mp3"), delete_after=60)
-        await self.embed_msg(ctx, f"Let's do this {ctx.message.author.name}",
-                             "I need the audio segment to cut your audio\n"
-                             "Format: (**MM:SS:MS** to **MM:SS:MS**)\n"
-                             "MM = Minutes, SS = Seconds, MS = Milliseconds.\n"
-                             "If you want the entire audio type *entire*\n"
-                             "This segment must not be longer than 10 seconds.", 60)
+        await self.embed_msg(ctx, f"Let's do this {ctx.message.author.name}", content.cut_segment, 60)
 
         while True:
             def check(m):
@@ -225,22 +306,20 @@ class AddCommand(commands.Cog, Helpers):
                 os.remove(f"{config.path}/{hashcode}.mp3")
                 break
 
-            begin_times, end_times, is_valid_format = await self.valid_format(self, ctx, msg_time, file_duration)
+            begin_times, end_times, is_valid_format = await self.valid_format(ctx, msg_time, file_duration)
 
             if not is_valid_format:
                 continue
 
             if 0 <= end_times - begin_times <= 10:
-                await self.embed_msg(ctx, f"I'm working on your file",
-                                     "Please wait a few seconds", 60)
+                await self.embed_msg(ctx, content.working_file, content.wait_sec, 60)
                 file = AudioSegment.from_file(f"{config.path}/{hashcode}.mp3")
                 file_trim = file[begin_times * 1000:end_times * 1000]
                 file_trim.export(f"{config.path}/{hashcode}_trim.mp3", format="mp3")
 
                 await ctx.send(file=discord.File(fp=f"{config.path}/{hashcode}_trim.mp3",
                                                  filename=f"{msg_name.content}_trim.mp3"), delete_after=60)
-                await self.embed_msg(ctx, f"Would you like to keep this file?",
-                                     "Type **yes** to keep it or **no** to cut it again, or **cancel**", 60)
+                await self.embed_msg(ctx, content.accept_file, content.response_file_accept, 60)
                 while True:
                     def check(m):
                         return str(m.content).lower() == "cancel" \
@@ -262,108 +341,61 @@ class AddCommand(commands.Cog, Helpers):
                     continue
 
             else:
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     "The file duration is longer than 10 seconds or lower than 0, please try again",
-                                     60)
+                username = ctx.message.author.name.capitalize()
+                await self.embed_msg(ctx, content.sorry_msg.format(username), content.check_audio, 60)
 
-    @commands.command(aliases=['a', 'Add'])
-    async def add(self, ctx, arg: str = None, arg2: str = None):
+    async def user_input_valid(self, ctx, arg=None, arg2=None):
 
-        # Discord async loop
-        loop = self.client.loop or asyncio.get_event_loop()
+        username = ctx.message.author.name.capitalize()
 
-        if not await self.check_if_running(self, ctx):
-            return
-
-        # Check if member has required role
-        if not await self.required_role(self, ctx):
-            running_commands.remove(ctx.author)
+        if not await super().user_input_valid(ctx, arg):
             return
 
         # Add command doesn't use two arguments
         if arg2:
-            await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                 f"This format is wrong, please use **{config.prefix}help**", 30)
-            running_commands.remove(ctx.author)
+            await self.embed_msg(ctx, content.sorry_msg.format(username), content.wrong_value.format(config.prefix), 30)
+            RUNNING_COMMAND.remove(ctx.author)
             return
 
-        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
+        return True
 
-        if not valid:
-            running_commands.remove(ctx.author)
-            return
+    # Insertion methods
 
-        # Embed message to member
-        await self.embed_msg(ctx, f"Hi {ctx.message.author.name}! Glad to see you :heart_eyes:",
-                             "Please, upload an **audio** file, **youtube link** or type **cancel**", 30)
+    @staticmethod
+    def add_song(path, r):
+        with open(path, 'wb') as f:
+            for chunk in r.iter_content():
+                if chunk:
+                    f.write(chunk)
+        f.close()
 
-        # Function to check message content
-        def check(m):
-            return (str(m.content).lower() == "cancel" or m.attachments or
-                    'youtube' in m.content or 'youtu.be' in m.content) \
-                   and (m.author.guild.id == ctx.message.guild.id and m.author.id == ctx.message.author.id)
+    async def insert_file_db(self, ctx, arg: str, filename: str, hashcode: str):
 
-        try:
-            # Waiting for a message with check
-            msg = await self.client.wait_for('message', check=check, timeout=600)
+        audio, _ = await self.get_or_create_object(Audio, {'hashcode': hashcode})
+        server, _ = await self.get_or_create_object(Server, {'discord_id': ctx.message.guild.id})
 
-            # Command cancelled by member
-            if str(msg.content).lower() == "cancel":
-                await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                     "Nothing has been **added**", 30)
-                running_commands.remove(ctx.author)
-                return
+        if arg is None:
+            audio, created = await self.get_or_create_object(AudioInServer,
+                                                             {'audio': audio, 'server': server}, {'name': filename})
+        else:
+            entity, _ = await self.get_or_create_object(Entity, {'discord_id': self.discord_id, 'server': server})
+            audio, created = await self.get_or_create_object(AudioInEntity,
+                                                             {'audio': audio, 'entity': entity}, {'name': filename})
 
-            # Member sent a youtube link
-            if 'youtube' in msg.content or 'youtu.be' in msg.content:
-                await self.embed_msg(ctx, f"Processing file... :gear: :tools:",
-                                     "Please wait a few seconds :hourglass:", 60)
+        if created:
+            await self.embed_msg(ctx, f"Thanks {ctx.message.author.name} for using wavU :wave:",
+                                 f"**{filename}** was added to **{ctx.message.guild.name}**")
 
-                # Download, convert to mp3 and get info about file
-                file_title, file_duration = await self.get_file_info(self, ctx, msg.content)
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id})")
 
-                if file_title is None or file_duration is None:
-                    running_commands.remove(ctx.author)
-                    return
+        else:
+            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
+                                 f"You already have **{filename}** in **{ctx.message.guild.name} **")
 
-                await self.link_file(self, ctx, arg, file_title, file_duration, discord_id)
-
-                running_commands.remove(ctx.author)
-                return
-
-            headers = {
-                'User-agent': 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0'
-            }
-
-            request_msg = requests.get(msg.attachments[0].url, headers=headers, stream=False)
-            filename = msg.attachments[0].filename
-            mp3 = filename.split('.')
-            path = f"{config.path}/{filename}.mp3"
-            filename = filename.replace(".mp3", "")
-
-            if mp3[len(mp3) - 1] == "mp3":
-                async with ctx.typing():
-                    fn = functools.partial(self.add_song, path, request_msg)
-                    await loop.run_in_executor(None, fn)
-
-                audio = mutagen.File(path)
-
-                hashcode = hashlib.md5(open(path, 'rb').read()).hexdigest()
-
-                if int(audio.info.length) < 10:
-                    await self.insert_file_db(self, ctx, arg, filename, hashcode, discord_id)
-                    os.rename(path, f"{config.path}/{hashcode}.mp3")
-                else:
-                    await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                         f"**{filename}** is longer than 10 seconds, **wavU** could not add it", 60)
-                    os.remove(path)
-            else:
-                await self.embed_msg(ctx, f"I'm sorry {ctx.message.author.name} :cry:",
-                                     f"This is not a **.mp3** file, **wavU** could not add it", 30)
-
-        except asyncio.TimeoutError:
-            await self.embed_msg(ctx, f"I'm sorry, {ctx.message.author.name} :cry:", "Time is up!", 15)
-        running_commands.remove(ctx.author)
+            logging.info(f"{ctx.message.author.name} ({ctx.message.author.id}) tried to added "
+                         f"{filename} to {ctx.message.guild.name} ({ctx.message.guild.id}) but already exists")
+        logging.info(f"Hashcode: {hashcode}, Audio_id: {audio.id}")
 
 
 async def setup(client):

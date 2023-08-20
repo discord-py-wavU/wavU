@@ -2,10 +2,10 @@
 
 from discord.ext import commands
 
-from resources.bot.helpers import Helpers
+from resources.bot.command_base import CommandBase
 
 
-class ListCommand(commands.Cog, Helpers):
+class ListCommand(commands.Cog, CommandBase):
 
     def __init__(self, client):
         super().__init__()
@@ -14,15 +14,10 @@ class ListCommand(commands.Cog, Helpers):
     @commands.command(name='list', aliases=['show', 'List', 'Show'])
     async def show_list(self, ctx, arg=None):
 
-        has_role = await self.required_role(self, ctx)
-        if not has_role:
+        if not await self.role_required(ctx):
             return
 
-        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
-        if not valid:
-            return
-
-        obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
+        _, audios, _ = await self.get_audios(ctx, arg)
 
         if audios:
             list_songs = ""

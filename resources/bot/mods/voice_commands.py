@@ -1,20 +1,57 @@
-# -*- coding: utf-8 -*-
-
+# Standard imports
 import asyncio
 import logging
-
+import functools
+# Discord imports
 import discord
 from discord.ext import commands
 from discord.utils import get
-
+# Own imports
 import config
+import content
+# Project imports
 from resources.audio.models import AudioInServer, AudioInEntity
-from resources.bot.helpers import Helpers, running_commands
 from resources.entity.models import Entity
 from resources.server.models import Server
+from resources.bot.command_base import CommandBase, RUNNING_COMMAND
 
 
-class VoiceCommands(commands.Cog, Helpers):
+class Voice:
+
+    def __init__(self):
+        super().__init__()
+
+    async def start_playing(self, voice, member, path_to_play, obj_audio):
+        loop = self.client.loop or asyncio.get_event_loop()
+        self.queue[str(member.guild.id)] = [(path_to_play, obj_audio)]
+
+        i = 0
+        avoid = 0
+        while i < len(self.queue[str(member.guild.id)]) and avoid < 3:
+            try:
+                volume = int(
+                    self.queue[str(member.guild.id)][i][1].volume) / 100
+                audio = self.queue[str(member.guild.id)][i][0]
+                await asyncio.sleep(0.5)
+                partial = functools.partial(voice.play,
+                                            discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audio), volume=volume))
+                await loop.run_in_executor(None, partial)
+                while voice.is_playing():
+                    await asyncio.sleep(1)
+                i += 1
+                avoid = 0
+            except discord.ClientException as e:
+                logging.exception(str(e))
+                await asyncio.sleep(1)
+                i += 1
+                avoid += 1
+
+        del self.queue[str(member.guild.id)]
+        await asyncio.sleep(1)
+        await voice.disconnect()
+
+
+class VoiceCommands(commands.Cog, CommandBase, Voice):
 
     def __init__(self, client):
         super().__init__()
@@ -50,37 +87,50 @@ class VoiceCommands(commands.Cog, Helpers):
             if is_connected and not_wavu and not_another_bot and not move_from_channel:
 
                 # Check first personal audios
-                audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.id,
-                                                                    'audios__enabled': True,
-                                                                    'server__discord_id': member.guild.id})
+                audio = await self.get_async_audio(
+                    Entity,
+                    {
+                        "discord_id": member.id,
+                        "audios__enabled": True,
+                        "server__discord_id": member.guild.id
+                    }
+                )
 
                 # Second check channel audios
                 if not audio:
-                    audio, obj = await self.get_async_audio(self, Entity, {"discord_id": member.voice.channel.id,
-                                                                        'audios__enabled': True,
-                                                                        'server__discord_id': member.guild.id})
+                    audio = await self.get_async_audio(
+                        Entity,
+                        {"discord_id": member.voice.channel.id,
+                         "audios__enabled": True,
+                         "server__discord_id": member.guild.id})
 
                 query_obj = AudioInEntity
 
                 # Third check server audios
                 if not audio:
-                    audio, obj = await self.get_async_audio(self, Server, {"discord_id": member.guild.id, 'enabled': True})
+                    audio = await self.get_async_audio(
+                        Server, {"discord_id": member.guild.id,
+                                 'enabled': True}
+                    )
                     query_obj = AudioInServer
 
                 obj_audio = None
 
                 if audio:
-                    obj_audio = await self.get_object(self, query_obj, {'audio__hashcode': audio.hashcode, 'enabled': True})
+                    obj_audio = await self.get_object(
+                        query_obj, {
+                            'audio__hashcode': audio.hashcode, 'enabled': True}
+                    )
 
                 if obj_audio:
                     path = f"{config.path}/{audio.hashcode}.mp3"
 
-
                     voice = await self.connect(voice, after)
                     if str(member.guild.id) not in self.queue:
-                        await self.start_playing(self, voice, member, path, obj_audio)
+                        await self.start_playing(voice, member, path, obj_audio)
                     else:
-                        self.queue[str(member.guild.id)].append((path, obj_audio))
+                        self.queue[str(member.guild.id)].append(
+                            (path, obj_audio))
             elif is_connected and not_wavu and not_another_bot and move_from_channel:
                 if voice and voice.is_connected():
                     await voice.move_to(after.channel)
@@ -95,62 +145,42 @@ class VoiceCommands(commands.Cog, Helpers):
     @commands.command(aliases=['Choose', 'ch', 'c', 'Ch', 'C'])
     async def choose(self, ctx, arg=None):
 
-        if not await self.check_if_running(self, ctx):
+        if not await self.user_input_valid(ctx, arg):
             return
+
+        objects, audios, hashcodes = await self.get_audios(ctx, arg)
 
         loop = self.client.loop or asyncio.get_event_loop()
 
-        if ctx.author.voice is None:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 "You need to be connected on a **Voice channel**", 30)
-            running_commands.remove(ctx.author)
-            return
-
-        valid, discord_id, obj_type = await self.valid_arg(self, ctx, arg)
-        if not valid:
-            running_commands.remove(ctx.author)
-            return
-
-        obj, audios, hashcodes = await self.search_songs(self, ctx, arg)
-
         if audios:
-            actual_page = 0
             self.actual_page = 0
 
-            self.list_audios = [audios[i:i + 10] for i in range(0, len(audios), 10)]
+            self.list_audios = [audios[i:i + 10]
+                                for i in range(0, len(audios), 10)]
             self.page_len = len(self.list_audios)
 
-            msg = f"Choose a number to play a file\n"
-            emb_msg = await self.show_audio_list(self, ctx, self.list_audios[0], msg)
+            self.view = discord.ui.View()
+            self.instruction_msg = f"Choose a number to play\n"
+            await self.button_interactions()
+            await self.show_audio_list(ctx)
 
-            def check(reaction, user):
+            def check(user):
                 return user != self.client.user and user.guild.id == ctx.guild.id
-
-            task_core_reaction = loop.create_task(self.core_reactions(self, emb_msg, actual_page))
 
             try:
                 while True:
-                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=600)
-                    if reaction:
-                        await asyncio.sleep(0.1)
-                        await emb_msg.remove_reaction(emoji=reaction.emoji, member=user)
+                    btn = await self.client.wait_for('interaction', check=check, timeout=600)
+                    await self.get_interaction(btn)
 
-                    if user.id != ctx.message.author.id:
-                        continue
+                    if self.interaction == 'right' or self.interaction == 'left':
+                        await self.move_page(btn, ctx)
 
-                    if str(reaction.emoji) == "➡️" or str(reaction.emoji) == "⬅️":
-                        if actual_page:
-                            await actual_page
-                        if task_core_reaction is not None:
-                            await task_core_reaction
-
-                        actual_page = loop.create_task(self.arrows_reactions(self, emb_msg, reaction, msg))
-
-                    if str(reaction.emoji) in self.dict_numbers:
-                        offset = (self.actual_page * 10) + int(self.dict_numbers[str(reaction.emoji)]) - 1
+                    if isinstance(self.interaction, int):
                         try:
+                            offset = (self.actual_page * 10) + self.interaction - 1
                             audio_to_play = f"{config.path}/{hashcodes[offset]}.mp3"
-                            volume_obj = obj[offset]
+                            volume_obj = objects[offset]
+                            await btn.response.defer()
                         except IndexError as IE:
                             logging.warning(IE)
                             continue
@@ -158,29 +188,31 @@ class VoiceCommands(commands.Cog, Helpers):
                             if str(ctx.guild.id) not in self.queue:
                                 channel = ctx.author.voice.channel
                                 voice = await channel.connect()
-                                loop.create_task(self.start_playing(self, voice, ctx.author, audio_to_play, volume_obj))
+                                loop.create_task(self.start_playing(
+                                    voice, ctx.author, audio_to_play, volume_obj))
                             else:
-                                self.queue[str(ctx.guild.id)].append((audio_to_play, volume_obj))
+                                self.queue[str(ctx.guild.id)].append(
+                                    (audio_to_play, volume_obj))
                         except discord.ClientException as e:
                             logging.warning(str(e))
                             await asyncio.sleep(1)
-                            self.queue[str(ctx.guild.id)].append((audio_to_play, volume_obj))
-                    elif str(reaction.emoji) == '❌':
-                        await emb_msg.delete()
-                        embed = discord.Embed(title=f"Thanks {ctx.message.author.name} for using wavU :wave:",
-                                              color=0xFC65E1)
-                        await ctx.send(embed=embed, delete_after=10)
-                        running_commands.remove(ctx.author)
+                            self.queue[str(ctx.guild.id)].append(
+                                (audio_to_play, volume_obj))
+                    elif self.interaction == 'cancel':
+                        await btn.response.defer()
+                        await self.emb_msg.delete()
+                        await self.add_special_buttons(ctx)
+                        RUNNING_COMMAND.remove(ctx.author)
                         return
 
             except asyncio.TimeoutError:
                 await self.embed_msg(ctx, f"Timeout!",
                                      'This command was cancelled', 600)
-                await emb_msg.delete()
+                await self.emb_msg.delete()
         else:
-            await self.embed_msg(ctx, f"Hey {ctx.message.author.name}",
-                                 'List is empty')
-        running_commands.remove(ctx.author)
+            username = ctx.message.author.name.capitalize()
+            await self.embed_msg(ctx, content.hey_msg.format(username), content.empty_list)
+        RUNNING_COMMAND.remove(ctx.author)
 
     @commands.command(aliases=['shutup', 'disconnect', 'disc', 'Shutup', 'Stop', 'Disconnect', 'Disc'])
     async def stop(self, ctx):
