@@ -15,15 +15,15 @@ jobs:
     - uses: actions/checkout@v3
     - name: Git pull changes
       run: |
-        cd /Users/facub/Desktop/Server/wavU
+        cd /Users/facub/Documents/GitHub/wavU
         git pull
 
     - uses: actions/checkout@v3
     - name: Build the Docker image
       run: |
-        cd /Users/facub/Desktop/Server/wavU/audios
+        cd /Users/facub/Documents/GitHub/wavU
         docker build --file ./Dockerfile -t wavu .
         docker stop wavu
         docker container prune -f
-        docker run --network="host" -d -v /Users/facub/Desktop/Server/wavU/audios:/app/audio wavu
+        docker run --network="host" -d --restart always -v /Users/facub/Desktop/Server/wavU/audios:/app/audio wavu
         docker image prune -f
