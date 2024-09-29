@@ -76,6 +76,13 @@ class VoiceCommands(commands.Cog, CommandBase, Voice):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
 
+        if member and member.voice:
+            members = member.voice.channel.members
+            # member is playing valorant
+            if any([mem.activity and mem.activity.name.lower() == 'valorant' for mem in members]):
+                logging.info(f"{member.name} is playing valorant")
+                return
+
         is_connected = after.channel is not None and before.channel is not member.voice.channel
         not_wavu = member != self.client.user
         not_another_bot = not member.bot
@@ -138,7 +145,7 @@ class VoiceCommands(commands.Cog, CommandBase, Voice):
                 if voice and voice.is_connected():
                     await voice.disconnect()
         except Exception as e:
-            logging.warn(f"Unexpected error {e}")
+            logging.warning(f"Unexpected error {e}")
             if voice and voice.is_connected() and after.channel is None:
                 await voice.disconnect()
 
